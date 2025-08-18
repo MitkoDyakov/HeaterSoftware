@@ -41,6 +41,8 @@
 /*----------------
  * Global styles
  *----------------*/
+lv_style_t dot_base;
+lv_style_t dot_red;
 
 /*----------------
  * Fonts
@@ -54,6 +56,12 @@
 /*----------------
  * Subjects
  *----------------*/
+lv_subject_t btn_left_1;
+lv_subject_t btn_left_2;
+lv_subject_t btn_left_3;
+lv_subject_t btn_right_1;
+lv_subject_t btn_right_2;
+lv_subject_t btn_right_3;
 
 /**********************
  *      MACROS
@@ -70,6 +78,21 @@ void HeaterGUI_init_gen(const char * asset_path)
     /*----------------
      * Global styles
      *----------------*/
+    static bool style_inited = false;
+
+    if (!style_inited) {
+        lv_style_init(&dot_base);
+        lv_style_set_width(&dot_base, 20);
+        lv_style_set_height(&dot_base, 20);
+        lv_style_set_radius(&dot_base, 10);
+        lv_style_set_bg_opa(&dot_base, (255 * 100 / 100));
+        lv_style_set_bg_color(&dot_base, lv_color_hex(0x0000FF));
+
+        lv_style_init(&dot_red);
+        lv_style_set_bg_color(&dot_red, lv_color_hex(0xFF0000));
+
+        style_inited = true;
+    }
 
     /*----------------
      * Fonts
@@ -83,6 +106,12 @@ void HeaterGUI_init_gen(const char * asset_path)
     /*----------------
      * Subjects
      *----------------*/
+    lv_subject_init_int(&btn_left_1, 0);
+    lv_subject_init_int(&btn_left_2, 0);
+    lv_subject_init_int(&btn_left_3, 0);
+    lv_subject_init_int(&btn_right_1, 0);
+    lv_subject_init_int(&btn_right_2, 0);
+    lv_subject_init_int(&btn_right_3, 0);
 
     /*----------------
      * Translations
@@ -95,6 +124,12 @@ void HeaterGUI_init_gen(const char * asset_path)
     /* Register fonts */
 
     /* Register subjects */
+    lv_xml_register_subject(NULL, "btn_left_1", &btn_left_1);
+    lv_xml_register_subject(NULL, "btn_left_2", &btn_left_2);
+    lv_xml_register_subject(NULL, "btn_left_3", &btn_left_3);
+    lv_xml_register_subject(NULL, "btn_right_1", &btn_right_1);
+    lv_xml_register_subject(NULL, "btn_right_2", &btn_right_2);
+    lv_xml_register_subject(NULL, "btn_right_3", &btn_right_3);
 
     /* Register callbacks */
 #endif

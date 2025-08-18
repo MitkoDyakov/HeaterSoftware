@@ -1,9 +1,9 @@
 /**
- * @file scr_settings_gen.h
+ * @file demo_gen.h
  */
 
-#ifndef SCR_SETTINGS_H
-#define SCR_SETTINGS_H
+#ifndef DEMO_H
+#define DEMO_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,7 +33,7 @@ extern "C" {
 
 
 
-lv_obj_t * scr_settings_create(void);
+lv_obj_t * demo_create(void);
 
 /**********************
  *      MACROS
@@ -43,4 +43,4 @@ lv_obj_t * scr_settings_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*SCR_SETTINGS_H*/
+#endif /*DEMO_H*/

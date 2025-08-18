@@ -47,6 +47,8 @@ extern "C" {
  * Global styles
  *----------------*/
 
+extern lv_style_t dot_base;
+extern lv_style_t dot_red;
 
 /*----------------
  * Fonts
@@ -60,6 +62,12 @@ extern "C" {
 /*----------------
  * Subjects
  *----------------*/
+extern lv_subject_t btn_left_1;
+extern lv_subject_t btn_left_2;
+extern lv_subject_t btn_left_3;
+extern lv_subject_t btn_right_1;
+extern lv_subject_t btn_right_2;
+extern lv_subject_t btn_right_3;
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -84,8 +92,7 @@ void HeaterGUI_init_gen(const char * asset_path);
  **********************/
 
 /*Include all the widget and components of this library*/
-#include "screens/scr_home_gen.h"
-#include "screens/scr_settings_gen.h"
+#include "screens/demo_gen.h"
 
 #ifdef __cplusplus
 } /*extern "C"*/
