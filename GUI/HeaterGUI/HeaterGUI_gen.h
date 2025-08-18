@@ -84,6 +84,8 @@ void HeaterGUI_init_gen(const char * asset_path);
  **********************/
 
 /*Include all the widget and components of this library*/
+#include "screens/scr_home_gen.h"
+#include "screens/scr_settings_gen.h"
 
 #ifdef __cplusplus
 } /*extern "C"*/
