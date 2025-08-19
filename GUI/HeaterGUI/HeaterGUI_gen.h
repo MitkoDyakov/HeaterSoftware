@@ -68,6 +68,7 @@ extern lv_subject_t btn_left_3;
 extern lv_subject_t btn_right_1;
 extern lv_subject_t btn_right_2;
 extern lv_subject_t btn_right_3;
+extern lv_subject_t btn_center;
 
 /**********************
  * GLOBAL PROTOTYPES

@@ -62,6 +62,7 @@ lv_subject_t btn_left_3;
 lv_subject_t btn_right_1;
 lv_subject_t btn_right_2;
 lv_subject_t btn_right_3;
+lv_subject_t btn_center;
 
 /**********************
  *      MACROS
@@ -112,6 +113,7 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_subject_init_int(&btn_right_1, 0);
     lv_subject_init_int(&btn_right_2, 0);
     lv_subject_init_int(&btn_right_3, 0);
+    lv_subject_init_int(&btn_center, 0);
 
     /*----------------
      * Translations
@@ -130,6 +132,7 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "btn_right_1", &btn_right_1);
     lv_xml_register_subject(NULL, "btn_right_2", &btn_right_2);
     lv_xml_register_subject(NULL, "btn_right_3", &btn_right_3);
+    lv_xml_register_subject(NULL, "btn_center", &btn_center);
 
     /* Register callbacks */
 #endif

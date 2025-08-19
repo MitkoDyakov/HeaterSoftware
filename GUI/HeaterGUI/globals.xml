@@ -24,6 +24,7 @@
         <int name="btn_right_1" value="0"/>
         <int name="btn_right_2" value="0"/>
         <int name="btn_right_3" value="0"/>
+        <int name="btn_center" value="0"/>
     </subjects>
 
     <images>
