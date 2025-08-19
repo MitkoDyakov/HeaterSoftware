@@ -52,7 +52,7 @@ lv_obj_t * demo_create(void)
     lv_obj_set_name(btn_1, "btn_1");
     lv_obj_add_style(btn_1, &dot_base, 0);
     lv_obj_add_style(btn_1, &dot_red, LV_STATE_CHECKED);
-    lv_obj_bind_state_if_eq(btn_1, &btn_center, LV_STATE_CHECKED, 1);
+    lv_obj_bind_state_if_eq(btn_1, &btn_left_1, LV_STATE_CHECKED, 1);
 
 
     lv_obj_t * btn_1 = lv_obj_create(lv_obj_0);
