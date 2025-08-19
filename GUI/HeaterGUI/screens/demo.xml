@@ -1,10 +1,10 @@
 <screen>
   <view width="240" height="135">
     <!-- Left column: x = +10 from left, y offsets -45 / 0 / +45 from middle -->
-    <lv_obj align="center" name="btn_1">
+    <lv_obj align="center" name="center_btn">
       <style name="dot_base"/>
       <style name="dot_red" selector="checked"/>
-      <bind_state_if_eq subject="btn_left_1" state="checked" ref_value="1"/>
+      <bind_state_if_eq subject="btn_center" state="checked" ref_value="1"/>
     </lv_obj>
 
     <lv_obj align="left_mid"  x="10"  y="-45" name="btn_1">

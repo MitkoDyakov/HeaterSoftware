@@ -47,12 +47,12 @@ lv_obj_t * demo_create(void)
     lv_obj_set_width(lv_obj_0, 240);
     lv_obj_set_height(lv_obj_0, 135);
 
-    lv_obj_t * btn_1 = lv_obj_create(lv_obj_0);
-    lv_obj_set_align(btn_1, LV_ALIGN_CENTER);
-    lv_obj_set_name(btn_1, "btn_1");
-    lv_obj_add_style(btn_1, &dot_base, 0);
-    lv_obj_add_style(btn_1, &dot_red, LV_STATE_CHECKED);
-    lv_obj_bind_state_if_eq(btn_1, &btn_left_1, LV_STATE_CHECKED, 1);
+    lv_obj_t * center_btn = lv_obj_create(lv_obj_0);
+    lv_obj_set_align(center_btn, LV_ALIGN_CENTER);
+    lv_obj_set_name(center_btn, "center_btn");
+    lv_obj_add_style(center_btn, &dot_base, 0);
+    lv_obj_add_style(center_btn, &dot_red, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(center_btn, &btn_left_1, LV_STATE_CHECKED, 1);
 
 
     lv_obj_t * btn_1 = lv_obj_create(lv_obj_0);
