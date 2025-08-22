@@ -45,12 +45,12 @@ typedef struct {
 
 // ---------- YOUR BUTTONS ----------
 static button_t buttons[NUM_BUTTONS] = {
-    { .gpio = 5,  .name = "LEFT_TOP"     },
-    { .gpio = 6,  .name = "LEFT_CENTER"  },
-    { .gpio = 7,  .name = "LEFT_BOTTOM"  },
-    { .gpio = 15, .name = "RIGHT_TOP"    },
-    { .gpio = 16, .name = "RIGHT_CENTER" },
-    { .gpio = 17, .name = "RIGHT_BOTTOM" }
+    { .gpio = 40, .name = "RIGHT_BOTTOM"},
+    { .gpio = 41, .name = "RIGHT_TOP"},
+    { .gpio = 42, .name = "RIGHT_CENTER"},
+    { .gpio = 45, .name = "LEFT_BOTTOM"},
+    { .gpio = 47, .name = "LEFT_CENTER"},
+    { .gpio = 48, .name = "LEFT_TOP"}
 };
 
 static QueueHandle_t event_queue;
