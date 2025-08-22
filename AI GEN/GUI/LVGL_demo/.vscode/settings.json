@@ -14,7 +14,9 @@
     "esp_lcd_panel_vendor.h": "c",
     "lv_lcd_generic_mipi.h": "c",
     "spi_master.h": "c",
-    "esp_chip_info.h": "c"
+    "esp_chip_info.h": "c",
+    "lv_conf_internal.h": "c",
+    "demo_gen.h": "c"
   },
   "idf.flashType": "JTAG"
 }

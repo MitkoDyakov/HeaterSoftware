@@ -25,8 +25,14 @@
 #include "esp_log.h"
 
 #include "ui.h"
+#include "demo_gen.h"
+#include "HeaterGUI_gen.h"
 
 const static char *TAG = "DISPLAY";
+
+#if !LV_USE_OBJ_NAME
+#error "LV_USE_OBJ_NAME is OFF. Your lv_conf.h isn't being used."
+#endif
 
 #define PIN_NUM_MOSI 37 
 #define PIN_NUM_CLK  36 
@@ -132,8 +138,7 @@ void app_main(void)
 {
     // Initialize LVGL
     lv_init();
-    ui_init();
-
+    
     // start a 1ms periodic esp_timer to advance LVGL tick
     esp_timer_create_args_t periodic_timer_args = {
         .callback = &lv_tick_cb,
@@ -144,30 +149,12 @@ void app_main(void)
     esp_timer_create(&periodic_timer_args, &lv_tick_timer);
     esp_timer_start_periodic(lv_tick_timer, 1000); // 1000 us = 1 ms
 
-    // Initialize the display
     lvgl_init_display();
 
-    lv_obj_t *label = lv_label_create(lv_scr_act());
-    lv_label_set_text(label, "Hello, LVGL!");
-    lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 10);
-
-    lv_obj_t *circle;
-    lv_style_t circle_style;
-    const uint32_t circle_radius = 15;
-
-    lv_style_init(&circle_style);
-    lv_style_set_radius(&circle_style, circle_radius);
-    lv_style_set_bg_opa(&circle_style, LV_OPA_100);
-    lv_color_t color;
-    color.red = 0xFF;
-    lv_style_set_bg_color(&circle_style, color);
-    lv_style_set_border_color(&circle_style, color);
-
-    // Create an object with the new style
-    circle = lv_obj_create(lv_scr_act());
-    lv_obj_set_size(circle, circle_radius * 2, circle_radius * 2);
-    lv_obj_add_style(circle, &circle_style, 0);
-    lv_obj_align(circle, LV_ALIGN_CENTER, 0, 0);
+    ui_init(NULL);
+    lv_obj_t * demo_screen;
+    demo_screen = demo_create();
+    lv_scr_load(demo_screen);
 
     //xTaskCreatePinnedToCore(spin_task, "pinned_task0_core0", 4096, (void*)task_id0, TASK_PRIO_3, NULL, CORE0);
     static uint64_t last_change = 0;
@@ -179,15 +166,11 @@ void app_main(void)
             if(flip)
             {
                 flip = 0;
-                lv_obj_set_style_bg_color(circle, lv_color_make(255, 0, 0), 0);
-                lv_obj_set_style_border_color(circle, lv_color_make(255, 0, 0), 0);
+                lv_subject_set_int(&btn_center, 0);
             }else{
                 flip = 1;
-                lv_obj_set_style_bg_color(circle, lv_color_make(0, 0, 255), 0);
-                lv_obj_set_style_border_color(circle, lv_color_make(0, 0, 255), 0);
+                lv_subject_set_int(&btn_center, 1);
             }
-
-            lv_obj_invalidate(circle);
             last_change = now;
         }
 

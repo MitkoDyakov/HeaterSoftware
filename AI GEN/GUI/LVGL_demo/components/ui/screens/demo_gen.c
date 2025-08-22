@@ -49,7 +49,6 @@ lv_obj_t * demo_create(void)
 
     lv_obj_t * center_btn = lv_obj_create(lv_obj_0);
     lv_obj_set_align(center_btn, LV_ALIGN_CENTER);
-    lv_obj_set_name(center_btn, "center_btn");
     lv_obj_add_style(center_btn, &dot_base, 0);
     lv_obj_add_style(center_btn, &dot_red, LV_STATE_CHECKED);
     lv_obj_bind_state_if_eq(center_btn, &btn_center, LV_STATE_CHECKED, 1);
@@ -59,7 +58,6 @@ lv_obj_t * demo_create(void)
     lv_obj_set_align(btn_1, LV_ALIGN_LEFT_MID);
     lv_obj_set_x(btn_1, 10);
     lv_obj_set_y(btn_1, -45);
-    lv_obj_set_name(btn_1, "btn_1");
     lv_obj_add_style(btn_1, &dot_base, 0);
     lv_obj_add_style(btn_1, &dot_red, LV_STATE_CHECKED);
     lv_obj_bind_state_if_eq(btn_1, &btn_left_1, LV_STATE_CHECKED, 1);
@@ -109,11 +107,7 @@ lv_obj_t * demo_create(void)
     lv_obj_add_style(lv_obj_5, &dot_red, LV_STATE_CHECKED);
     lv_obj_bind_state_if_eq(lv_obj_5, &btn_right_3, LV_STATE_CHECKED, 1);
 
-
-
     LV_TRACE_OBJ_CREATE("finished");
-
-    lv_obj_set_name(lv_obj_0, "demo");
 
     return lv_obj_0;
 }
