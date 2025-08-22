@@ -24,6 +24,8 @@
 
 #include "esp_log.h"
 
+#include "ui.h"
+
 const static char *TAG = "DISPLAY";
 
 #define PIN_NUM_MOSI 37 
@@ -130,6 +132,7 @@ void app_main(void)
 {
     // Initialize LVGL
     lv_init();
+    ui_init();
 
     // start a 1ms periodic esp_timer to advance LVGL tick
     esp_timer_create_args_t periodic_timer_args = {

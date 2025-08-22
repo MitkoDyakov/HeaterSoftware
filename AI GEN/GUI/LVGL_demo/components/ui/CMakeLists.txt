@@ -6,5 +6,4 @@ idf_component_register(
     "screens/demo_gen.c"
     # add every generated assets/*.c here if present
   INCLUDE_DIRS "." "./screens"
-  REQUIRES lvgl
 )
