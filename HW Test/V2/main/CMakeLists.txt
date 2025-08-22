@@ -1,0 +1,2 @@
+idf_component_register(SRCS "main.c" "00_display/display.c" "01_i2cdetect/i2cdetect.c" "02_inputdetect/inputdetect.c" "03_wifidetect/wifidetect.c" "04_pdsetup/pdsetup.c" "05_temptest/temptest.c" "06_soundtest/soundtest.c" "07_backlighttest/backlighttest.c" "08_heatertest/heatertest.c" "09_fantest/fantest.c" "10_PID/pid_test.c"
+                    INCLUDE_DIRS "." "08_heatertest")
