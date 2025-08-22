@@ -28,11 +28,7 @@
 #include "demo_gen.h"
 #include "HeaterGUI_gen.h"
 
-const static char *TAG = "DISPLAY";
-
-#if !LV_USE_OBJ_NAME
-#error "LV_USE_OBJ_NAME is OFF. Your lv_conf.h isn't being used."
-#endif
+// const static char *TAG = "DISPLAY";
 
 #define PIN_NUM_MOSI 37 
 #define PIN_NUM_CLK  36 
