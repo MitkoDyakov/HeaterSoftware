@@ -16,7 +16,10 @@
     "spi_master.h": "c",
     "esp_chip_info.h": "c",
     "lv_conf_internal.h": "c",
-    "demo_gen.h": "c"
+    "demo_gen.h": "c",
+    "chrono": "c",
+    "text_encoding": "c",
+    "typeinfo": "c"
   },
   "idf.flashType": "JTAG"
 }
