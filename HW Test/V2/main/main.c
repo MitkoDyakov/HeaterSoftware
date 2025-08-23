@@ -95,7 +95,7 @@ void app_main(void)
   // inputdetect_setup();
   wifidetect_setup();
   pdsetupt_setup();
-  // temptest_setup();
+  temptest_setup();
   soundtest_setup();
   backlighttest_setup();
   heatertest_setup();

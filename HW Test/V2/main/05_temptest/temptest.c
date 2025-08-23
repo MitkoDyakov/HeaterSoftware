@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include "driver/i2c_master.h"
 
-#define TMP75_ADDRESS         (0x48)
+#define TMP75_ADDRESS         (0x4a)
 #define TMP75_TEMP_REG        (0x00)
 #define TMP75_CONF_REG        (0x01)
 #define TMP75_TEMP_AD_STEP	  (0.0625)
@@ -34,22 +34,23 @@ void TMP75_setup(void)
 
 static int do_temptest_cmd(int argc, char **argv)
 {
-  uint8_t reg_addr = TMP75_TEMP_REG;
-  uint8_t rx_data[2] = {0};
-  uint16_t TempSum;
+    uint8_t reg_addr = TMP75_TEMP_REG;   // 0x00 for TMP110/TMP75
+    uint8_t rx_data[2] = {0};
+    esp_err_t ret = i2c_master_transmit_receive(
+        temp_handle, &reg_addr, 1, rx_data, 2, I2C_TOOL_TIMEOUT_VALUE_MS);
 
-  esp_err_t ret = i2c_master_transmit_receive(temp_handle, &reg_addr, 1, rx_data, 2, I2C_TOOL_TIMEOUT_VALUE_MS);
+    if (ret == ESP_OK) {
+        // Combine bytes, then arithmetic right shift by 4 to get signed 12-bit (Q4)
+        int16_t raw16 = (int16_t)((rx_data[0] << 8) | rx_data[1]);
+        int16_t q4 = raw16 >> 4;                 // sign-extends correctly
+        float temp_c = (float)q4 * 0.0625f;      // LSB = 0.0625 °C
 
-  if (ret == ESP_OK)
-  {
-    TempSum = (((rx_data[0] << 8) | rx_data[1]) >> 4);
-    TempSum = TempSum * TMP75_TEMP_AD_STEP;
-    printf("Ambient temperature: %d°C\r\n", TempSum);
-  }else{
-    printf("Error: cannot read the ambient temperature.\r\n");
-  }
-
-  return 0;
+        printf("Ambient temperature: %.2f °C\r\n", temp_c);
+    } else {
+        printf("Error: cannot read the ambient temperature. (%s)\r\n",
+               esp_err_to_name(ret));
+    }
+    return 0;
 }
 
 static void register_temptest(void)
