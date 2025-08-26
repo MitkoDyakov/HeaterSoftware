@@ -150,27 +150,27 @@ void ADS7142_setup(void)
 }
 
 double calculate_rntc(double Vout) {
-    const double Vdd = 3.3;
-    const double R1 = 4530.0;
+    const double Vdd = 3.3;       // supply (V)
+    const double R1  = 9100.0;    // ohms
 
-    // Precomputed constants
-    const double A = 2.133;   // (1323 + 1500) / 1323
-    const double B = 0.5660;  // 1500 / 2650
+    // Precomputed from R2=3200, R3=3200, R4=1500:
+    // R23 = 1600,  A = (R23+R4)/R23 = 1.9375,  B = R4/R3 = 0.46875
+    const double A = 1.9375;
+    const double B = 0.46875;
 
+    // C = R1/(Rntc + R1)
     double C = (Vout + B * Vdd) / (Vdd * A);
 
     if (C <= 0.0 || C >= 1.0) {
-        return -1.0; // Invalid result
+        return NAN;               // out-of-range Vout → invalid resistance
     }
-
-    double Rntc = R1 * (1.0 - C) / C;
-    return Rntc;
+    return R1 * (1.0 - C) / C;    // Rntc in ohms
 }
 
 double calculate_temperature_celsius(double Rntc) {
-    const double A = 0.0008709905814;
-    const double B = 0.0002544774657;
-    const double C = 0.0000001780886985;
+    const double A = 0.0008898765062;
+    const double B = 0.0002511457735;
+    const double C = 0.0000001932659254;
 
     if (Rntc <= 0.0) return -273.15;
 

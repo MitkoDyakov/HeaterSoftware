@@ -89,6 +89,7 @@ void app_main(void)
   printf(" |  8.  Try 'backlighttest' to set screen brightness from 0 to 100  |\n");
   printf(" |  9.  Try 'heatertest' to run a test on a heater                  |\n");
   printf(" |  10. Try 'fantest' to test the fan channels                      |\n");
+  printf(" |  11. Try 'pidtest' to run PID algo                               |\n");
   printf(" ===================================================================\n\n");
 
   i2cdetect_setup();
@@ -100,7 +101,7 @@ void app_main(void)
   backlighttest_setup();
   heatertest_setup();
   fantest_setup();
-  // pidtest_setup();
+  pidtest_setup();
 
   lcd_init();
   display_jpeg_espjpeg("/data/logoJ.jpg");
