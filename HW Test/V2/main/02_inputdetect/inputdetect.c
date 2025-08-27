@@ -6,125 +6,192 @@
 #include "freertos/event_groups.h"
 #include "esp_console.h"
 #include "linenoise/linenoise.h"
+#include "freertos/queue.h"
+#include "freertos/timers.h"
+#include "esp_log.h"
 
-#define IS_BIT_SET(n,x)   (((n & (1 << x)) != 0) ? 1 : 0)
 
-#define IO_EXPANDER_ADP5585_ADDRESS (0x34)
-#define IO_EXPANDER_RST_PIN         (1u)
-#define IO_EXPANDER_INT_PIN         (2u)
-
-QueueHandle_t interputQueue;
-volatile bool flagISR = 0;
-bool oldValueBtnReg[9] = {false};
-
-extern i2c_master_bus_handle_t tool_bus_handle;
-i2c_master_dev_handle_t ioexpander_handle = NULL;
-
-static int do_inputdetect_cmd(int argc, char **argv);
 static void register_inputdetect(void);
 
-static void IRAM_ATTR gpio_interrupt_handler(void *args)
-{
-    int pinNumber = (int)args;
-    xQueueSendFromISR(interputQueue, &pinNumber, NULL);
-    flagISR = 1;
+// ---------- Tuning ----------
+#define DEBOUNCE_MS             30
+#define INITIAL_REPEAT_DELAY_MS 400
+#define REPEAT_MS               400
+#define TIMER_PERIOD_MS         20   // timer tick (scan cadence)
+#define NUM_BUTTONS             6
+
+static const char *TAG = "BUTTONS";
+
+// ---------- Events ----------
+typedef enum {
+    BUTTON_EVENT_SHORT,
+    BUTTON_EVENT_REPEAT
+} button_event_t;
+
+typedef struct {
+    int            btn_id;   // GPIO number (or your own ID)
+    button_event_t event;
+} event_msg_t;
+
+// ---------- Button state ----------
+typedef struct {
+    int        gpio;
+    const char *name;
+
+    // debounced stable level (active-low: 0=pressed, 1=released)
+    int        stable_level;
+    bool       pressed;
+
+    // debounce edge gating
+    bool       pending;              // ISR saw an edge
+    TickType_t debounce_deadline;    // when to re-sample
+
+    // repeat & short suppression
+    TickType_t press_start;
+    TickType_t last_repeat;
+    bool       any_repeat_since_press;
+} button_t;
+
+// ---------- YOUR BUTTONS ----------
+static button_t buttons[NUM_BUTTONS] = {
+    { .gpio = 40, .name = "RIGHT_BOTTOM"},
+    { .gpio = 41, .name = "RIGHT_TOP"},
+    { .gpio = 42, .name = "RIGHT_CENTER"},
+    { .gpio = 45, .name = "LEFT_BOTTOM"},
+    { .gpio = 47, .name = "LEFT_CENTER"},
+    { .gpio = 48, .name = "LEFT_TOP"}
+};
+
+static QueueHandle_t event_queue;
+static TimerHandle_t scan_timer;
+
+// ---- tick helpers (wrap-safe) ----
+static inline bool tick_reached(TickType_t now, TickType_t deadline) {
+    return (TickType_t)(now - deadline) < (TickType_t)0x80000000;
+}
+
+// ---------- Emit event ----------
+static inline void emit_event(int gpio, button_event_t ev) {
+    event_msg_t msg = { .btn_id = gpio, .event = ev };
+    (void)xQueueSend(event_queue, &msg, 0);
+}
+
+// ---------- ISR: mark edge + set debounce deadline ----------
+static void IRAM_ATTR button_isr_handler(void *arg) {
+    button_t *btn = (button_t *)arg;
+    TickType_t now = xTaskGetTickCountFromISR();
+    btn->pending = true;
+    btn->debounce_deadline = now + pdMS_TO_TICKS(DEBOUNCE_MS);
+}
+
+// ---------- Timer callback: debounce + repeat + short ----------
+static void scan_timer_callback(TimerHandle_t t) {
+    TickType_t now = xTaskGetTickCount();
+
+    for (int i = 0; i < NUM_BUTTONS; i++) {
+        button_t *btn = &buttons[i];
+
+        // 1) Debounced edge processing (only after deadline)
+        if (btn->pending && tick_reached(now, btn->debounce_deadline)) {
+            btn->pending = false;
+            int level = gpio_get_level(btn->gpio); // 0=pressed (active-low), 1=released
+
+            if (level != btn->stable_level) {
+                btn->stable_level = level;
+
+                if (level == 0 && !btn->pressed) {
+                    // PRESSED
+                    btn->pressed = true;
+                    btn->press_start = now;
+                    btn->last_repeat = now;         // base for initial repeat delay
+                    btn->any_repeat_since_press = false;
+                } else if (level == 1 && btn->pressed) {
+                    // RELEASED
+                    btn->pressed = false;
+
+                    // If no repeat during this hold -> it's a SHORT
+                    if (!btn->any_repeat_since_press) {
+                        emit_event(btn->gpio, BUTTON_EVENT_SHORT);
+                    }
+                    // reset flag for next press
+                    btn->any_repeat_since_press = false;
+                }
+            }
+        }
+
+        // 2) Repeat-on-hold (keyboard style): runs every tick
+        if (btn->pressed) {
+            TickType_t elapsed_ms = (now - btn->last_repeat) * portTICK_PERIOD_MS;
+            TickType_t due_ms     = (btn->last_repeat == btn->press_start)
+                                    ? INITIAL_REPEAT_DELAY_MS
+                                    : REPEAT_MS;
+
+            if (elapsed_ms >= due_ms) {
+                emit_event(btn->gpio, BUTTON_EVENT_REPEAT);
+                btn->last_repeat = now;
+                btn->any_repeat_since_press = true; // suppress SHORT at release
+            }
+        }
+    }
 }
 
 void inputdetect_setup(void)
 {
-    // GPIO SETUP
-    gpio_reset_pin(IO_EXPANDER_RST_PIN);
-    gpio_set_direction(IO_EXPANDER_RST_PIN, GPIO_MODE_OUTPUT);
-    gpio_set_level(IO_EXPANDER_RST_PIN, 1);
+  // GPIO setup
+  gpio_install_isr_service(0);
 
-    gpio_reset_pin(IO_EXPANDER_INT_PIN);
-    gpio_set_direction(IO_EXPANDER_INT_PIN, GPIO_MODE_INPUT);
-    gpio_set_intr_type(IO_EXPANDER_INT_PIN, GPIO_INTR_NEGEDGE);
+  for (int i = 0; i < NUM_BUTTONS; i++) {
+      button_t *btn = &buttons[i];
 
-    interputQueue = xQueueCreate(10, sizeof(int));
-    gpio_install_isr_service(0);
-    gpio_isr_handler_add(IO_EXPANDER_INT_PIN, gpio_interrupt_handler, (void *)IO_EXPANDER_INT_PIN);
+      gpio_config_t io = {
+          .intr_type = GPIO_INTR_ANYEDGE,
+          .mode = GPIO_MODE_INPUT,
+          .pin_bit_mask = (1ULL << btn->gpio),
+          .pull_up_en = GPIO_PULLUP_ENABLE,    // active-low buttons
+          .pull_down_en = GPIO_PULLDOWN_DISABLE
+      };
+      gpio_config(&io);
 
-    // I2C SETUP
-    i2c_device_config_t ioexpander_dev_cfg = {
-        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-        .device_address = IO_EXPANDER_ADP5585_ADDRESS,
-        .scl_speed_hz = 400000,
-    };
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(tool_bus_handle, &ioexpander_dev_cfg, &ioexpander_handle));
+      // Initialize stable state from hardware
+      btn->stable_level = gpio_get_level(btn->gpio);     // 0 pressed, 1 released
+      btn->pressed = (btn->stable_level == 0);
 
-    uint8_t data_wr[3] = {0x00, 0x00, 0x00};
+      // Attach ISR
+      gpio_isr_handler_add(btn->gpio, button_isr_handler, btn);
+  }
 
-    // Set as inputs
-    data_wr[0] = 0x27;
-    data_wr[1] = 0x00;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
+  // Event queue
+  event_queue = xQueueCreate(32, sizeof(event_msg_t));
 
-    data_wr[0] = 0x28;
-    data_wr[1] = 0x00;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
+  // Single periodic timer
+  scan_timer = xTimerCreate("btn_scan",
+                            pdMS_TO_TICKS(TIMER_PERIOD_MS),
+                            pdTRUE, NULL,
+                            scan_timer_callback);
 
-    // Add debaunce
-    data_wr[0] = 0x21;
-    data_wr[1] = 0xE0;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
+  register_inputdetect();
+}
 
-    data_wr[0] = 0x22;
-    data_wr[1] = 0xF0;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
-
-    // Set INT on falling edge
-    data_wr[0] = 0x1B;
-    data_wr[1] = 0x00;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
-
-    data_wr[0] = 0x1C;
-    data_wr[1] = 0x00;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
-
-    // Eneble INT
-    data_wr[0] = 0x1F;
-    data_wr[1] = 0x1F;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
-
-    data_wr[0] = 0x20;
-    data_wr[1] = 0x0F;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
-
-    // Clear INT every 50us + set oscilator
-    data_wr[0] = 0x3B;
-    data_wr[1] = 0xA2;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
-
-    // Enable INT 
-    data_wr[0] = 0x3C;
-    data_wr[1] = 0x02;
-    ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_wr, 2, -1));
-
-    // CONSOLE SETUP
-    register_inputdetect();
+static void vConsoleTask(void *arg) {
+    event_msg_t msg;
+    for (;;) {
+        if (xQueueReceive(event_queue, &msg, portMAX_DELAY) == pdTRUE) {
+            const char *etype = (msg.event == BUTTON_EVENT_SHORT) ? "SHORT" : "REPEAT";
+            printf("GPIO %d: %s \r\n", msg.btn_id, etype);
+            // TODO: dispatch to your app logic
+        }
+    }
 }
 
 static int do_inputdetect_cmd(int argc, char **argv)
 {
-  uint8_t data_write[3] = {0x00, 0x00, 0x00};
-  uint8_t data_read[3] = {0x00, 0x00, 0x00};
-  bool newValueBtnReg[9] = {false};
-  uint8_t idx = 0;
-
-  // Clear GPI_INT_STAT_A GPI_INT_STAT_B
-  data_write[0] = 0x13;
-  ESP_ERROR_CHECK(i2c_master_transmit_receive(ioexpander_handle, data_write, 1, data_read, 2, -1));
-
-  // Clear the INT
-  data_write[0] = 0x01;
-  data_write[1] = 0x02;
-  ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_write, 2, -1));
-
-  xQueueReset(interputQueue);
-
   printf("Press ENTER to quit.\r\n");
   
+  xTimerStart(scan_timer, 0);
+  TaskHandle_t xHandle = NULL;
+
+  xTaskCreate(vConsoleTask, "ConsoleTask", 4048, NULL, 5, &xHandle);
+
   while (1) {
     // Prepare select() to check for input
     fd_set readfds;
@@ -150,155 +217,10 @@ static int do_inputdetect_cmd(int argc, char **argv)
         break;
       }
     }
-
-    for(idx=0; idx<9; idx++)
-    {
-      newValueBtnReg[idx] = false;
-    }
-
-    if(flagISR == 1)
-    {
-        flagISR = 0;
-
-        // Clear GPI_INT_STAT_A GPI_INT_STAT_B
-        data_write[0] = 0x13;
-        ESP_ERROR_CHECK(i2c_master_transmit_receive(ioexpander_handle, data_write, 1, data_read, 2, -1));
-     
-        // Clear the INT
-        data_write[0] = 0x01;
-        data_write[1] = 0x02;
-        ESP_ERROR_CHECK(i2c_master_transmit(ioexpander_handle, data_write, 2, -1));
-
-        if(IS_BIT_SET(data_read[0], 0))
-        {
-          newValueBtnReg[0] = true;
-        }
-
-        if(IS_BIT_SET(data_read[0], 1))
-        {
-          newValueBtnReg[1] = true;
-        }
-
-        if(IS_BIT_SET(data_read[0], 2))
-        {
-          newValueBtnReg[2] = true;
-        }
-
-        if(IS_BIT_SET(data_read[0], 3))
-        {
-          newValueBtnReg[3] = true;
-        }
-
-        if(IS_BIT_SET(data_read[0], 4))
-        {
-          newValueBtnReg[4] = true;
-        }
-
-        if(IS_BIT_SET(data_read[1], 0))
-        {
-          newValueBtnReg[5] = true;
-        }
-
-        if(IS_BIT_SET(data_read[1], 1))
-        {
-          newValueBtnReg[6] = true;
-        }
-        if(IS_BIT_SET(data_read[1], 2))
-        {
-          newValueBtnReg[7] = true;
-        }
-
-        if(IS_BIT_SET(data_read[1], 3))
-        {
-          newValueBtnReg[8] = true;
-        }
-    }
-
-    for(idx=0; idx<9; idx++)
-    {
-      if(oldValueBtnReg[idx] != newValueBtnReg[idx])
-      {
-        switch (idx) 
-        {
-          case 0:
-              if(newValueBtnReg[idx])
-              {
-                  printf("BUTTON 1 pressed\n");
-              }else{
-                  printf("BUTTON 1 release\n");
-              }
-              break;
-          case 1:
-              if(newValueBtnReg[idx])
-              {
-                  printf("RIGHT pressed\n");
-              }else{
-                  printf("RIGHT release\n");
-              }
-              break;
-          case 2:
-              if(newValueBtnReg[idx])
-              {
-                  printf("LEFT pressed\n");
-              }else{
-                  printf("LEFT release\n");
-              }
-              break;
-          case 3:
-              if(newValueBtnReg[idx])
-              {
-                  printf("SELECT pressed\n");
-              }else{
-                  printf("SELECT release\n");
-              }
-              break;
-          case 4:
-              if(newValueBtnReg[idx])
-              {
-                  printf("DOWN pressed\n");
-              }else{
-                  printf("DOWN release\n");
-              }
-              break;
-          case 5:
-              if(newValueBtnReg[idx])
-              {
-                  printf("BUTTON 2 pressed\n");                        
-              }else{
-                  printf("BUTTON 2 release\n");
-              }     
-              break;
-          case 6:
-              if(newValueBtnReg[idx])
-              {
-                  printf("BUTTON 3 pressed\n");
-              }else{
-                  printf("BUTTON 3 release\n");
-              }    
-              break;
-          case 7:
-              if(newValueBtnReg[idx])
-              {
-                  printf("BUTTON 4 pressed\n");
-              }else{
-                  printf("BUTTON 4 release\n");
-              }   
-              break;
-          case 8:
-              if(newValueBtnReg[idx])
-              {
-                  printf("UP pressed\n");
-              }else{
-                  printf("UP release\n");
-              }
-              break;
-          default:
-            // code block
-          }                  
-        oldValueBtnReg[idx] = newValueBtnReg[idx];
-      }
-    }
   }
+
+  vTaskDelete(xHandle);
+  xTimerStop(scan_timer, 0);
 
   return 0;
 }

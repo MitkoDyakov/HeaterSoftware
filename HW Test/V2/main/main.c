@@ -93,7 +93,7 @@ void app_main(void)
   printf(" ===================================================================\n\n");
 
   i2cdetect_setup();
-  // inputdetect_setup();
+  inputdetect_setup();
   wifidetect_setup();
   pdsetupt_setup();
   temptest_setup();
