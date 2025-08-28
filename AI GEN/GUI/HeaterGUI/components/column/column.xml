@@ -1,0 +1,17 @@
+<component>
+    <styles>
+        <style name="main" 
+            bg_opa="100" border_width="0"
+            bg_color="#5262f0"
+            pad_row="0"
+            pad_column="0"
+            width="content" height="content"
+            layout="flex"
+            flex_flow="column"
+            radius="0"
+            />
+    </styles>
+    <view>
+        <style name="main" />
+    </view>
+</component>
