@@ -23,7 +23,7 @@
 #define DERIVATIVE_GAIN                    4.0f   /* s   */
 #define DERIVATIVE_CLAMP_C_PER_SECOND      5.0f
 #define HEATR_CHANNEL_1_PIN    (7u)
-#define HEATR_CHANNEL_2_PIN    (17u)
+#define HEATR_CHANNEL_2_PIN    (15u)
 #define ADS7142_RDY_PIN        (5u)
 #define MAX_DUTY               ((1 << 13) - 1)
 
