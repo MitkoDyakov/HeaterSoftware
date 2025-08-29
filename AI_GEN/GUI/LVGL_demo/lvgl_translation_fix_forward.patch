@@ -1,0 +1,607 @@
+diff -ruN lvgl__lvgl/Kconfig lvgl__lvgl/Kconfig
+--- lvgl__lvgl/Kconfig
++++ lvgl__lvgl/Kconfig
+@@ -1710,6 +1710,8 @@
+ 		config LV_USE_TEST_SCREENSHOT_COMPARE
+ 			bool "Enable `lv_test_screenshot_compare`. Requires libpng and a few MB of extra RAM."
+ 			depends on LV_USE_TEST
++		config LV_USE_TRANSLATION
++			bool "Enable text translation support"
+ 		config LV_USE_XML
+ 			bool "Enable loading XML UIs runtime"
+ 		config LV_USE_COLOR_FILTER
+diff -ruN lvgl__lvgl/lvgl.h lvgl__lvgl/lvgl.h
+--- lvgl__lvgl/lvgl.h
++++ lvgl__lvgl/lvgl.h
+@@ -98,6 +98,7 @@
+ #include "src/others/xml/lv_xml.h"
+ #include "src/others/xml/lv_xml_component.h"
+ #include "src/others/test/lv_test.h"
++#include "src/others/translation/lv_translation.h"
+ 
+ #include "src/libs/barcode/lv_barcode.h"
+ #include "src/libs/bin_decoder/lv_bin_decoder.h"
+diff -ruN lvgl__lvgl/src/core/lv_global.h lvgl__lvgl/src/core/lv_global.h
+--- lvgl__lvgl/src/core/lv_global.h
++++ lvgl__lvgl/src/core/lv_global.h
+@@ -228,6 +228,11 @@
+     lv_test_state_t test_state;
+ #endif
+ 
++#if LV_USE_TRANSLATION
++    lv_ll_t translation_packs_ll;
++    const char * translation_selected_lang;
++#endif
++
+ #if LV_USE_NUTTX
+     struct _lv_nuttx_ctx_t * nuttx_ctx;
+ #endif
+diff -ruN lvgl__lvgl/src/lv_conf_internal.h lvgl__lvgl/src/lv_conf_internal.h
+--- lvgl__lvgl/src/lv_conf_internal.h
++++ lvgl__lvgl/src/lv_conf_internal.h
+@@ -3673,6 +3673,15 @@
+     #endif
+ #endif
+ 
++/** 1: Enable text translation support */
++#ifndef LV_USE_TRANSLATION
++    #ifdef CONFIG_LV_USE_TRANSLATION
++        #define LV_USE_TRANSLATION CONFIG_LV_USE_TRANSLATION
++    #else
++        #define LV_USE_TRANSLATION 0
++    #endif
++#endif
++
+ /*1: Enable color filter style*/
+ #ifndef LV_USE_COLOR_FILTER
+     #ifdef CONFIG_LV_USE_COLOR_FILTER
+@@ -3681,6 +3690,7 @@
+         #define LV_USE_COLOR_FILTER     0
+     #endif
+ #endif
++
+ /*==================
+  * DEVICES
+  *==================*/
+diff -ruN lvgl__lvgl/src/lv_init.c lvgl__lvgl/src/lv_init.c
+--- lvgl__lvgl/src/lv_init.c
++++ lvgl__lvgl/src/lv_init.c
+@@ -39,6 +39,7 @@
+ #include "misc/lv_fs.h"
+ #include "osal/lv_os_private.h"
+ #include "others/sysmon/lv_sysmon_private.h"
++#include "others/translation/lv_translation.h"
+ #include "others/xml/lv_xml.h"
+ 
+ #if LV_USE_SVG
+@@ -386,6 +387,10 @@
+     lv_svg_decoder_init();
+ #endif
+ 
++#if LV_USE_TRANSLATION
++    lv_translation_init();
++#endif
++
+ #if LV_USE_XML
+     lv_xml_init();
+ #endif
+@@ -499,6 +504,10 @@
+     lv_objid_builtin_destroy();
+ #endif
+ 
++#if LV_USE_TRANSLATION
++    lv_translation_deinit();
++#endif
++
+     lv_mem_deinit();
+ 
+     lv_initialized = false;
+diff -ruN lvgl__lvgl/src/misc/lv_types.h lvgl__lvgl/src/misc/lv_types.h
+--- lvgl__lvgl/src/misc/lv_types.h
++++ lvgl__lvgl/src/misc/lv_types.h
+@@ -379,6 +379,11 @@
+ typedef struct _lv_evdev_discovery_t lv_evdev_discovery_t;
+ #endif
+ 
++#if LV_USE_TRANSLATION
++typedef struct _lv_translation_tag_dsc_t lv_translation_tag_dsc_t;
++
++typedef struct _lv_translation_pack_t lv_translation_pack_t;
++#endif
+ #endif /*__ASSEMBLY__*/
+ 
+ /**********************
+diff -ruN lvgl__lvgl/src/others/translation/lv_translation.c lvgl__lvgl/src/others/translation/lv_translation.c
+--- lvgl__lvgl/src/others/translation/lv_translation.c
++++ lvgl__lvgl/src/others/translation/lv_translation.c
+@@ -0,0 +1,283 @@
++/**
++ * @file lv_translation.c
++ *
++ */
++
++/*********************
++ *      INCLUDES
++ *********************/
++#include "lv_translation.h"
++#if LV_USE_TRANSLATION
++
++#include "lv_translation_private.h"
++#include "../../misc/lv_ll.h"
++#include "../../stdlib/lv_mem.h"
++#include "../../stdlib/lv_string.h"
++#include "../../misc/lv_log.h"
++#include "../../misc/lv_assert.h"
++#include "../../core/lv_global.h"
++
++/*********************
++ *      DEFINES
++ *********************/
++#define packs_ll (LV_GLOBAL_DEFAULT()->translation_packs_ll)
++#define selected_lang (LV_GLOBAL_DEFAULT()->translation_selected_lang)
++
++/**********************
++ *      TYPEDEFS
++ **********************/
++
++/**********************
++ *  STATIC PROTOTYPES
++ **********************/
++
++/**********************
++ *  STATIC VARIABLES
++ **********************/
++
++/**********************
++ *      MACROS
++ **********************/
++
++/**********************
++ *   GLOBAL FUNCTIONS
++ **********************/
++
++void lv_translation_init(void)
++{
++    lv_ll_init(&packs_ll, sizeof(lv_translation_pack_t));
++    selected_lang = NULL;
++}
++
++void lv_translation_deinit(void)
++{
++    lv_translation_pack_t * pack;
++    LV_LL_READ(&packs_ll, pack) {
++        if(pack->is_static == false) {
++            size_t i;
++            size_t trans_cnt = lv_array_size(&pack->translation_array);
++            for(i = 0; i < trans_cnt; i++) {
++                lv_translation_tag_dsc_t * tag = lv_array_at(&pack->translation_array, i);
++                lv_free((void *)tag->tag);
++
++                size_t j;
++                for(j = 0; j < pack->language_cnt; j++) {
++                    lv_free((void *)tag->translations[j]); /*Free each translation of the tag*/
++                }
++                lv_free(tag->translations);
++            }
++
++            lv_array_deinit(&pack->translation_array);
++
++            for(i = 0; i < pack->language_cnt; i++) {
++                lv_free((void *)pack->languages[i]);
++            }
++            lv_free(pack->languages);
++        }
++    }
++
++    lv_ll_clear(&packs_ll);
++
++    lv_free((void *)selected_lang);
++}
++
++lv_translation_pack_t * lv_translation_add_static(const char * languages[], const char * tags[],
++                                                  const char * translations[])
++{
++    LV_ASSERT_NULL(languages);
++    LV_ASSERT_NULL(tags);
++    LV_ASSERT_NULL(translations);
++
++    lv_translation_pack_t * pack = lv_ll_ins_head(&packs_ll);
++    LV_ASSERT_MALLOC(pack);
++    if(pack == NULL) return NULL;
++    lv_memzero(pack, sizeof(lv_translation_pack_t));
++    pack->is_static = 1;
++
++    /*Count the languages*/
++    while(languages[pack->language_cnt]) {
++        pack->language_cnt++;
++    }
++
++    pack->languages = languages;
++    pack->tag_p = tags;
++    pack->translation_p = translations;
++    return pack;
++}
++
++lv_translation_pack_t * lv_translation_add_dynamic(void)
++{
++    lv_translation_pack_t * pack = lv_ll_ins_head(&packs_ll);
++    LV_ASSERT_MALLOC(pack);
++    if(pack == NULL) return NULL;
++
++    lv_memzero(pack, sizeof(lv_translation_pack_t));
++
++    pack->is_static = 0;
++    lv_array_init(&pack->translation_array, 16, sizeof(lv_translation_tag_dsc_t));
++
++    return pack;
++}
++
++void lv_translation_set_language(const char * lang)
++{
++    if(selected_lang) lv_free((void *)selected_lang);
++    selected_lang = lv_strdup(lang);
++}
++
++const char * lv_translation_get(const char * tag)
++{
++    if(selected_lang == NULL) {
++        LV_LOG_WARN("No language is selected to get the translation of `%s`", tag);
++        return tag;
++    }
++
++    lv_translation_pack_t * pack;
++    bool lang_found = false;
++    LV_LL_READ(&packs_ll, pack) {
++        uint32_t lang;
++        for(lang = 0; lang < pack->language_cnt; lang++) {
++            /*Does this pack contains the language?*/
++            if(lv_streq(pack->languages[lang], selected_lang)) {
++                lang_found = true;
++                /*Find the tag*/
++                if(pack->is_static) {
++                    uint32_t t;
++                    for(t = 0; pack->tag_p[t]; t++) {
++                        if(lv_streq(pack->tag_p[t], tag)) {
++                            /*Find the "row" of the tag */
++                            const char ** tr_row = pack->translation_p + pack->language_cnt * t;
++                            const char * tr = tr_row[lang];
++                            if(tr) return tr; /*Found directly*/
++
++                            LV_LOG_WARN("`%s` tag is not found. Using the tag as translation.", tag);
++                            return tag; /*Return the tag as a fall back*/
++                        }
++                    }
++                }
++                else {
++                    size_t trans_cnt = lv_array_size(&pack->translation_array);
++                    size_t i;
++                    for(i = 0; i < trans_cnt; i++) {
++                        lv_translation_tag_dsc_t * tag_dsc = lv_array_at(&pack->translation_array, i);
++                        if(lv_streq(tag_dsc->tag, tag)) {
++                            const char * tr = tag_dsc->translations[lang];
++                            if(tr) return tr; /*Found directly*/
++
++                            LV_LOG_WARN("`%s` tag is not found. Using the tag as translation.", tag);
++                            return tag; /*Return the tag as a worst case option*/
++                        }
++                    }
++                }
++            }
++        }
++    }
++
++    if(lang_found) {
++        LV_LOG_WARN("`%s` tag is not found, using the tag as translation.", tag);
++    }
++    else {
++        LV_LOG_WARN("`%s` language is not found, using the `%s` as translation.", selected_lang, tag);
++    }
++
++    return tag;
++}
++
++lv_result_t lv_translation_add_language(lv_translation_pack_t * pack, const char * lang)
++{
++    if(pack->is_static) {
++        LV_LOG_WARN("Can't add language `%s` to static translation pack `%p`", lang, (void *)pack);
++        return LV_RESULT_INVALID;
++    }
++
++    pack->language_cnt++;
++    pack->languages = lv_realloc(pack->languages, sizeof(const char *) * pack->language_cnt);
++    LV_ASSERT_MALLOC(pack->languages);
++    if(pack->languages == NULL) {
++        LV_LOG_WARN("Couldn't allocate languages in `%p`", (void *)pack);
++        return LV_RESULT_INVALID;
++    }
++
++    pack->languages[pack->language_cnt - 1] = lv_strdup(lang);
++    LV_ASSERT_MALLOC(pack->languages[pack->language_cnt - 1]);
++    if(pack->languages[pack->language_cnt - 1] == NULL) {
++        LV_LOG_WARN("Couldn't allocate the new language in `%p`", (void *)pack);
++        return LV_RESULT_INVALID;
++    }
++
++    return LV_RESULT_OK;
++}
++
++int32_t lv_translation_get_language_index(lv_translation_pack_t * pack, const char * lang_name)
++{
++    uint32_t i;
++    for(i = 0; i < pack->language_cnt; i++) {
++        if(lv_streq(pack->languages[i], lang_name)) return (int32_t)i;
++    }
++
++    return -1;
++}
++
++
++lv_translation_tag_dsc_t * lv_translation_add_tag(lv_translation_pack_t * pack, const char * tag_name)
++{
++    if(pack->is_static) {
++        LV_LOG_WARN("Can't add tag `%s` to static translation pack `%p`", tag_name, (void *)pack);
++        return NULL;
++    }
++
++    lv_translation_tag_dsc_t tag;
++    tag.tag = lv_strdup(tag_name);
++    LV_ASSERT_MALLOC(tag.tag);
++    tag.translations = lv_zalloc(pack->language_cnt * sizeof(const char *));
++    LV_ASSERT_MALLOC(tag.translations);
++
++    if(tag.tag == NULL || tag.translations == NULL) {
++        LV_LOG_WARN("Couldn't allocate memory for the tag's data in `%p`", (void *)pack);
++        lv_free((void *)tag.tag);
++        lv_free((void *)tag.translations);
++        return NULL;
++    }
++
++    lv_result_t res = lv_array_push_back(&pack->translation_array, &tag);
++
++    if(res != LV_RESULT_OK) {
++        LV_LOG_WARN("Couldn't add the tag in `%p`", (void *)pack);
++        lv_free((void *)tag.tag);
++        lv_free((void *)tag.translations);
++        return NULL;
++    }
++
++    return lv_array_back(&pack->translation_array);
++}
++
++lv_result_t lv_translation_set_tag_translation(lv_translation_pack_t * pack, lv_translation_tag_dsc_t * tag,
++                                               uint32_t lang_idx, const char * trans)
++{
++    if(pack->is_static) {
++        LV_LOG_WARN("Can't set tag translation`%s` in static translation pack `%p`", trans, (void *)pack);
++        return LV_RESULT_INVALID;
++    }
++
++    if(lang_idx >= pack->language_cnt) {
++
++        LV_LOG_WARN("Can't set the translation for language %" LV_PRIu32 " as there are only %" LV_PRIu32
++                    " languages defined in %p",
++                    lang_idx, pack->language_cnt, (void *)pack);
++        return LV_RESULT_INVALID;
++    }
++
++    lv_free((void *)tag->translations[lang_idx]); /*Free the earlier set language if any*/
++    tag->translations[lang_idx] = lv_strdup(trans);
++    if(tag->translations[lang_idx] == NULL) {
++        LV_LOG_WARN("Couldn't allocate the new translation in tag `%p` in pack `%p`", (void *)tag, (void *) pack);
++        return LV_RESULT_INVALID;
++    }
++    return LV_RESULT_OK;
++}
++
++/**********************
++ *   STATIC FUNCTIONS
++ **********************/
++
++#endif /*LV_USE_TRANSLATION*/
+diff -ruN lvgl__lvgl/src/others/translation/lv_translation.h lvgl__lvgl/src/others/translation/lv_translation.h
+--- lvgl__lvgl/src/others/translation/lv_translation.h
++++ lvgl__lvgl/src/others/translation/lv_translation.h
+@@ -0,0 +1,140 @@
++/**
++ * @file lv_translation.h
++ *
++ */
++
++#ifndef LV_TRANSLATION_H
++#define LV_TRANSLATION_H
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/*********************
++ *      INCLUDES
++ *********************/
++#include "../../lv_conf_internal.h"
++
++#if LV_USE_TRANSLATION
++
++#include LV_STDINT_INCLUDE
++#include "../../misc/lv_array.h"
++
++/*********************
++ *      DEFINES
++ *********************/
++
++/**********************
++ *      TYPEDEFS
++ **********************/
++
++/**********************
++ * GLOBAL PROTOTYPES
++ **********************/
++
++/**
++ * Initialize the translation module
++ */
++void lv_translation_init(void);
++
++/**
++ * De-initialize the translation module and free all allocated translations
++ */
++void lv_translation_deinit(void);
++
++/**
++ * Register a translation pack from static arrays.
++ * All the pointers need to be static, that is to live while they are used
++ * @param languages     List of languages. E.g. `{"en", "de", NULL}`
++ * @param tags          Tags that are using in the UI. E.g. `{"dog", "cat", NULL}`
++ * @param translations  List of translations. E.g. `{"Dog", "Cat", "Hund", "Katze"}`
++ * @return              The created pack
++ */
++lv_translation_pack_t * lv_translation_add_static(const char * languages[], const char * tags[],
++                                                  const char * translations[]);
++
++/**
++ * Add a pack to which translations can be added dynamically.
++ * `pack->languages` needs to be a malloc-ed array where each language is also malloc-ed as an element.
++ * `pack->translation_array` stores the translation having `lv_translation_tag_dsc_t` items
++ * In each array element `tag` is a malloced string, `translations` is a malloc-ed array
++ * with malloc-ed array for each element.
++ * @return      the created pack to which data can be added manually.
++ */
++lv_translation_pack_t * lv_translation_add_dynamic(void);
++
++/**
++ * Select the current language
++ * @param lang      a string from the defined languages. E.g. "en" or "de"
++ */
++void lv_translation_set_language(const char * lang);
++
++/**
++ * Get the translated version of a tag on the selected language
++ * @param tag       the tag to translate
++ * @return          the translation
++ * @note            fallback rules:
++ *                      - if the tag is found on the selected language return it
++ *                      - if the tag is not found on the selected language, use the fist language
++ *                      - if the tag is not found on the first language, return the tag
++ */
++const char * lv_translation_get(const char * tag);
++
++/**
++ * Shorthand of lv_translation_set_language
++ * @param tag       the tag to translate
++ * @return          the translation
++ */
++static inline const char * lv_tr(const char * tag)
++{
++    return lv_translation_get(tag);
++}
++
++/**
++ * Add a new language to a dynamic language pack.
++ * All languages should be added before adding tags
++ * @param pack      pointer to a dynamic translation pack
++ * @param lang      language to add, e.g. "en", or "de"
++ * @return          LV_RESULT_OK: success, LV_RESULT_INVALID: failed
++ */
++lv_result_t lv_translation_add_language(lv_translation_pack_t * pack, const char * lang);
++
++/**
++ * Get the index of a language in a pack.
++ * @param pack      pointer to a static or dynamic language pack
++ * @param lang_name name of the language to find
++ * @return          index of the language or -1 if not found.
++ */
++int32_t lv_translation_get_language_index(lv_translation_pack_t * pack, const char * lang_name);
++
++/**
++ * Add a new tag to a dynamic language pack.
++ * Once the tag is added the translations for each language can be added too by using
++ * `lv_translation_set_tag_translation`
++ * @param pack      pointer to a dynamic translation pack
++ * @param tag_name  name of the tag, e.g. "dog", or "house"
++ * @return          pointer to the allocated tag descriptor
++ */
++lv_translation_tag_dsc_t * lv_translation_add_tag(lv_translation_pack_t * pack, const char * tag_name);
++
++/**
++ * Add a translation to a tag in a dynamic translation pack
++ * @param pack      pointer to a dynamic translation pack
++ * @param tag       return value of `lv_translation_add_tag`
++ * @param lang_idx  index of the language for which translation should be set
++ * @param trans     the translation on the given language
++ * @return          LV_RESULT_OK: success, LV_RESULT_INVALID: failed
++ */
++lv_result_t lv_translation_set_tag_translation(lv_translation_pack_t * pack, lv_translation_tag_dsc_t * tag,
++                                               uint32_t lang_idx, const char * trans);
++
++/**********************
++ *      MACROS
++ **********************/
++#endif /*LV_USE_TRANSLATION*/
++
++#ifdef __cplusplus
++} /*extern "C"*/
++#endif
++
++#endif /* LV_TRANSLATION_H */
+diff -ruN lvgl__lvgl/src/others/translation/lv_translation_private.h lvgl__lvgl/src/others/translation/lv_translation_private.h
+--- lvgl__lvgl/src/others/translation/lv_translation_private.h
++++ lvgl__lvgl/src/others/translation/lv_translation_private.h
+@@ -0,0 +1,59 @@
++/**
++ * @file lv_translation_private.h
++ *
++ */
++
++#ifndef LV_TRANSLATION_PRIVATE_H
++#define LV_TRANSLATION_PRIVATE_H
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++/*********************
++ *      INCLUDES
++ *********************/
++#include "../../lv_conf_internal.h"
++
++#if LV_USE_TRANSLATION
++
++#include LV_STDINT_INCLUDE
++#include "../../misc/lv_array.h"
++
++/*********************
++ *      DEFINES
++ *********************/
++
++/**********************
++ *      TYPEDEFS
++ **********************/
++
++struct _lv_translation_tag_dsc_t {
++    const char * tag;
++    const char ** translations; /**< Translations for each language*/
++};
++
++struct _lv_translation_pack_t {
++    const char ** languages;
++    uint32_t language_cnt;
++    uint32_t is_static; /*In the union translations_p is used*/
++    const char ** tag_p;
++    const char ** translation_p; /*E.g. {{"a", "b"}, {"c", "d"}}*/
++    lv_array_t translation_array;
++};
++
++/**********************
++ * GLOBAL PROTOTYPES
++ **********************/
++
++/**********************
++ *      MACROS
++ **********************/
++
++#endif /*LV_USE_TRANSLATION*/
++
++#ifdef __cplusplus
++} /*extern "C"*/
++#endif
++
++#endif /* LV_TRANSLATION_PRIVATE_H */
