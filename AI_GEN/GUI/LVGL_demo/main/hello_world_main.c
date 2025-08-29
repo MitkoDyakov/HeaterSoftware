@@ -380,7 +380,7 @@ void app_main(void)
         //         lv_subject_set_int(&btn_center, 1);
         //     }
         //     last_change = now;
-        // }
+        // }z
 
         lv_timer_handler(); // Handle LVGL tasks
         vTaskDelay(pdMS_TO_TICKS(10));

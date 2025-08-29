@@ -48,7 +48,6 @@ lv_obj_t * icon_create(lv_obj_t * parent)
     }
 
     lv_obj_t * lv_image_0 = lv_image_create(parent);
-    lv_image_set_inner_align(lv_image_0, LV_IMAGE_ALIGN_STRETCH);
     lv_obj_add_style(lv_image_0, &main, 0);
 
 
