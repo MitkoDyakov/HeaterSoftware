@@ -1,0 +1,42 @@
+<globals>
+    <api>
+        <!-- Add <enumdefs> here -->
+    </api>
+
+    <consts>
+        <!-- Add <px>, <int>, <color> etc here -->
+    </consts>
+
+    <styles>
+        <style name="dot_base"
+            width="20" height="20" radius="10"
+            bg_opa="100%" bg_color="0x0000FF"/>
+        <!-- Red override (applied with selector on the widget) -->
+        <style name="dot_red" bg_color="0xFF0000"/>
+    </styles>
+
+    <subjects>
+        <!-- Left column buttons (top/mid/bottom) -->
+        <int name="btn_left_1" value="0"/>
+        <int name="btn_left_2" value="0"/>
+        <int name="btn_left_3" value="0"/>
+        <!-- Right column buttons (top/mid/bottom) -->
+        <int name="btn_right_1" value="0"/>
+        <int name="btn_right_2" value="0"/>
+        <int name="btn_right_3" value="0"/>
+        <int name="btn_center" value="0"/>
+        <int name="chan1_armed" value="0"/>
+        <int name="chan2_armed" value="0"/>
+    </subjects>
+
+    <images>
+        <data name="img_down" src_path="images/down_arrow.png" color_format="rgb565"/>
+        <data name="img_up" src_path="images/up_arrow.png"  color_format="rgb565"/>
+    </images>
+
+    <fonts>
+        <tiny_ttf name="font_status" size="22" src_path="fonts/BebasNeue-Regular.ttf"/>
+        <tiny_ttf name="font_clock" size="25" src_path="fonts/BebasNeue-Regular.ttf"/>
+        <tiny_ttf name="font_temp" size="57" src_path="fonts/BebasNeue-Regular.ttf"/>
+    </fonts>
+</globals>

@@ -1,0 +1,4 @@
+<translations languages="en de">
+    <translation tag="ARM" en="ARM" de="ARM"/>
+    <translation tag="STOP" en="STOP" de="HALT"/>
+</translations>

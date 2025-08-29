@@ -1,0 +1,16 @@
+list(
+  APPEND
+  PROJECT_SOURCES
+  ${CMAKE_CURRENT_LIST_DIR}/components/column/column_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/icon/icon_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/row/row_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/demo_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/screens/home_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/HeaterGUI_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/ui.c
+  ${CMAKE_CURRENT_LIST_DIR}/HeaterGUI.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/BebasNeue_Regular_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/BebasNeue_Regular_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/BebasNeue_Regular_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/images/img_down_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/images/img_up_data.c)

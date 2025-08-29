@@ -1,0 +1,23 @@
+idf_component_register(
+  SRCS
+    "ui.c"
+    "HeaterGUI.c"
+    "HeaterGUI_gen.c"
+    "screens/demo_gen.c"
+    "screens/home_gen.c"
+    "images/img_up_data.c"
+    "images/img_down_data.c"
+    "fonts/BebasNeue_Regular_ttf_data.c"
+    "components/column/column_gen.c"
+    "components/icon/icon_gen.c"
+    "components/row/row_gen.c"
+  INCLUDE_DIRS 
+    "." 
+    "screens" 
+    "images" 
+    "fonts" 
+    "components/column" 
+    "components/icon" 
+    "components/row"
+  REQUIRES lvgl
+)
