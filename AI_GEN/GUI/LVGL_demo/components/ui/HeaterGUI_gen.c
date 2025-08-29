@@ -93,8 +93,6 @@ lv_subject_t chan2_armed;
 
 void HeaterGUI_init_gen(const char * asset_path)
 {
-    char buf[256];
-
     lv_translation_set_language("en");
     /*----------------
      * Global styles

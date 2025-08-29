@@ -293,7 +293,7 @@ void lvgl_init_display(void)
     lv_display_set_rotation(lvDisplay, LV_DISPLAY_ROTATION_90);
     lv_display_set_color_format(lvDisplay, LV_COLOR_FORMAT_RGB565); // Use RGB565
     lv_display_set_flush_cb(lvDisplay, lvgl_flush_cb);
-    lv_display_set_buffers(lvDisplay, (void *)lvBuffer1, lvBuffer2, draw_buffer_sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_buffers(lvDisplay, (void *)lvBuffer1, (void *)lvBuffer2, draw_buffer_sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
 
     const esp_lcd_panel_io_callbacks_t cbs = {
         .on_color_trans_done = notify_lvgl_flush_ready,
