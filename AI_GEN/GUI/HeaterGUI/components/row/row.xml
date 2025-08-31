@@ -10,7 +10,7 @@
             radius="0"
             />
     </styles>
-    <view>
+    <view scrollable="false">
         <style name="main" />
     </view>
 </component>

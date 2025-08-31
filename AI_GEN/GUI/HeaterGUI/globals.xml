@@ -5,6 +5,14 @@
 
     <consts>
         <!-- Add <px>, <int>, <color> etc here -->
+        <color name="backgraund" value="0x34404D"/>
+        <color name="subtext" value="0x7F90A1"/>
+        <color name="maintext" value="0xE7E1CD"/>
+        <color name="red" value="0x9F4949"/>
+        <color name="grey" value="0xD9D9D9"/>
+        <color name="yellow" value="0xEC8140"/>
+        <color name="card_bg" value="0x000000"/>
+        <color name="timer_text" value="0x1E2630"/>
     </consts>
 
     <styles>
@@ -25,18 +33,35 @@
         <int name="btn_right_2" value="0"/>
         <int name="btn_right_3" value="0"/>
         <int name="btn_center" value="0"/>
-        <int name="chan1_armed" value="0"/>
-        <int name="chan2_armed" value="0"/>
+
+        <int name="ch1_active" value="0"/>
+        <int name="ch1_power" value="0"/>
+        <int name="ch1_temp_big" value="0"/>
+        <int name="ch1_temp_small" value="0"/>
+
+        <int name="ch2_active" value="0"/>
+        <int name="ch2_power" value="0"/>
+        <int name="ch2_temp_big" value="0"/>
+        <int name="ch2_temp_small" value="0"/>
+        
+        <int name="page" value="0"/>
+
+        <string name="opTime" value="00:00"/>
+        <string name="command" value="START"/>
     </subjects>
 
     <images>
-        <data name="img_down" src_path="images/down_arrow.png" color_format="rgb565a8"/>
-        <data name="img_up" src_path="images/up_arrow.png"  color_format="rgb565a8"/>
+        <data name="channel_bg" src_path="images/channel_bg.png" color_format="rgb565a8"/>
+        <data name="page_bg" src_path="images/page_bg.png"  color_format="rgb565a8"/>
+        <data name="start_bg" src_path="images/start_bg.png" color_format="rgb565a8"/>
+        <data name="target_bg" src_path="images/target_bg.png"  color_format="rgb565a8"/>
     </images>
 
     <fonts>
-        <tiny_ttf name="font_status" size="22" src_path="fonts/BebasNeue-Regular.ttf"/>
-        <tiny_ttf name="font_clock" size="25" src_path="fonts/BebasNeue-Regular.ttf"/>
-        <tiny_ttf name="font_temp" size="57" src_path="fonts/BebasNeue-Regular.ttf"/>
+        <tiny_ttf name="font_ch_label_temp_small" size="24" src_path="fonts/LeagueGothic.ttf"/>
+        <tiny_ttf name="font_start_card" size="34" src_path="fonts/LeagueGothic.ttf"/>
+        <tiny_ttf name="font_ch_temp_big" size="46" src_path="fonts/LeagueGothic.ttf"/>
+        <tiny_ttf name="font_channel_dot" size="50" src_path="fonts/LeagueGothic.ttf"/>
+        <tiny_ttf name="font_target_temp" size="64" src_path="fonts/LeagueGothic.ttf"/>
     </fonts>
 </globals>

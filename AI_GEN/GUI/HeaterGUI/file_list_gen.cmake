@@ -1,16 +1,24 @@
 list(
   APPEND
   PROJECT_SOURCES
+  ${CMAKE_CURRENT_LIST_DIR}/components/channel/channel_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/column/column_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/control/control_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/icon/icon_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/page/page_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/row/row_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/components/target_tmp/target_tmp_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/demo_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/home_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/HeaterGUI_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/ui.c
   ${CMAKE_CURRENT_LIST_DIR}/HeaterGUI.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/BebasNeue_Regular_ttf_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/BebasNeue_Regular_ttf_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/BebasNeue_Regular_ttf_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/images/img_down_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/images/img_up_data.c)
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/images/channel_bg_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/images/page_bg_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/images/start_bg_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/images/target_bg_data.c)

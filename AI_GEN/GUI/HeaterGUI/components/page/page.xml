@@ -1,0 +1,22 @@
+<component>
+    <api>
+        <prop name="active_page" type="int" default="0"></prop>
+    </api>
+ 
+     <previews>
+        <preview name="page" style_bg_color="#backgraund" width="87" height="20" />
+    </previews>
+
+    <styles>
+        <style name="main" width="87" height="20" pad_all="0" border_width="0" text_font="font_start_card" text_color="#grey"/>
+    </styles>
+    
+    <view scrollable="false">
+        <lv_image src="page_bg" style_pad_all="0"></lv_image>
+        <style name="main" />
+        <lv_label text="•" x="24" y="-8" />
+        <lv_label text="•" x="34" y="-8" style_text_opa="120"/>
+        <lv_label text="•" x="44" y="-8" style_text_opa="120"/>
+        <lv_label text="•" x="54" y="-8" style_text_opa="120"/>
+    </view>
+</component>
