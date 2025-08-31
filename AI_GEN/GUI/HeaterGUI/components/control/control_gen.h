@@ -31,7 +31,7 @@ extern "C" {
  **********************/
 
 
-lv_obj_t * control_create(lv_obj_t * parent, const char * command, const char * time);
+lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_t * time);
 
 /**********************
  *      MACROS

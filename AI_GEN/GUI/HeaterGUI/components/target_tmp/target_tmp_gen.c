@@ -31,7 +31,7 @@
  *   GLOBAL FUNCTIONS
  **********************/
 
-lv_obj_t * target_tmp_create(lv_obj_t * parent, const char * target_temp)
+lv_obj_t * target_tmp_create(lv_obj_t * parent, lv_subject_t * target_temp)
 {
     LV_TRACE_OBJ_CREATE("begin");
 
@@ -71,10 +71,12 @@ lv_obj_t * target_tmp_create(lv_obj_t * parent, const char * target_temp)
 
     lv_obj_t * lv_label_1 = lv_label_create(lv_obj_0);
     lv_obj_set_style_text_font(lv_label_1, font_target_temp, 0);
-    lv_label_set_text(lv_label_1, target_temp);
-    lv_obj_set_style_text_color(lv_label_1, MAINTEXT, 0);
-    lv_obj_set_x(lv_label_1, 62);
+    lv_obj_set_style_text_align(lv_label_1, LV_TEXT_ALIGN_RIGHT, 0);
+    lv_label_bind_text(lv_label_1, target_temp, "%i°");lv_obj_set_style_text_color(lv_label_1, MAINTEXT, 0);
+    lv_obj_set_x(lv_label_1, 50);
     lv_obj_set_y(lv_label_1, 5);
+    lv_obj_set_width(lv_label_1, 74);
+    lv_obj_set_height(lv_label_1, 78);
 
 
 

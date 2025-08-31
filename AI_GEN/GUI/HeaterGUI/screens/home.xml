@@ -1,18 +1,23 @@
 <screen permanent="true">
     <styles>
         <style name="main" bg_color="#backgraund"/>
+        <style name="fade" opa="190"/>
     </styles>
     <view width="240" height="135">
-        <style name="main" />
+        <style name="main"/>
         <row width="100%" height="100%" style_pad_all="4">
           <column width="89" height="100%" style_bg_opa="0" style_pad_right="2">
             <row width="89" height="49">
               <!-- channel 1 component here -->
-              <channel channel="CH1" temp_small=".9" style_pad_all="0"></channel>
+              <channel channel="CH1" active="0" power="0" temp_small="ch1_temp_small" temp_big="ch1_temp_big" style_pad_all="0">
+                <bind_style name="fade" subject="ch1_active" ref_value="0"/>
+              </channel>
             </row>
             <row width="89" height="49" style_margin_top="4">
-                <!-- channel 2 component here  -->
-                 <channel channel="CH2" temp_big="35°" style_pad_all="0"></channel>
+              <!-- channel 2 component here  -->
+              <channel channel="CH2" active="0" power="0" temp_small="ch2_temp_small" temp_big="ch2_temp_big" style_pad_all="0">
+                <bind_style name="fade" subject="ch2_active" ref_value="0"/>
+              </channel>
             </row>
             <row width="89" height="20" style_margin_top="4">
               <!-- page component here  -->
@@ -22,11 +27,11 @@
           <column width="141" height="100%" style_bg_opa="0"  style_pad_left="2">
             <row width="141" height="83">
                <!-- set target temp component here -->
-               <target_tmp style_pad_all="0" target_temp="30°"></target_tmp>
+               <target_tmp style_pad_all="0" target_temp="targetTemp"></target_tmp>
             </row>
             <row width="141" height="39" style_margin_top="4">
                <!-- start/stop component here  -->
-               <control style_pad_all="0"></control>
+               <control style_pad_all="0" time="opTime" command="command"></control>
             </row>
           </column>
         </row>

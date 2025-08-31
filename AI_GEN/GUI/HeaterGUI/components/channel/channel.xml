@@ -1,10 +1,10 @@
 <component>
     <api>
         <prop name="channel" type="string" default="CH"></prop>
-        <prop name="temp_big" type="string" default="24°"></prop>
-        <prop name="temp_small" type="string" default=".7"></prop>
+        <prop name="temp_big" type="subject" default="24"></prop>
+        <prop name="temp_small" type="subject" default="7"></prop>
         <prop name="active" type="int" default="0"></prop>
-        <prop name="power" type="int" default="0"></prop>
+        <prop name="power" type="int" default="255"></prop>
     </api>
  
      <previews>
@@ -13,14 +13,15 @@
 
     <styles>
         <style name="main" width="87" height="49" pad_all="0" margin_all="0" border_width="0"/>
+        <style name="fade" opa="100" />
     </styles>
     
     <view scrollable="false">
         <style name="main" />
         <lv_image src="channel_bg" style_pad_all="0"></lv_image>
-        <lv_label text="$temp_big" style_text_font="font_ch_temp_big"  style_text_color="#maintext" x="36" y="-2" />
+        <lv_label bind_text-fmt="%i°" bind_text="$temp_big" style_text_font="font_ch_temp_big" style_text_align="right" style_text_color="#maintext" x="26" y="-2"  width="54" height="54" />
         <lv_label text="$channel" style_text_font="font_ch_label_temp_small" style_text_color="#subtext" x="6" y="4" />
-        <lv_label text="$temp_small" style_text_font="font_ch_label_temp_small" style_text_color="#maintext" x="69" y="20" />
+        <lv_label bind_text-fmt=".%i" bind_text="$temp_small" style_text_font="font_ch_label_temp_small" style_text_color="#maintext" x="69" y="20" />
         <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#red" x="9" y="9"/>
     </view>
 </component>

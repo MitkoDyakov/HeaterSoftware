@@ -34,18 +34,19 @@
         <int name="btn_right_3" value="0"/>
         <int name="btn_center" value="0"/>
 
-        <int name="ch1_active" value="0"/>
+        <int name="ch1_active" value="1"/>
         <int name="ch1_power" value="0"/>
-        <int name="ch1_temp_big" value="0"/>
-        <int name="ch1_temp_small" value="0"/>
+        <int name="ch1_temp_big" value="24"/>
+        <int name="ch1_temp_small" value="9"/>
 
-        <int name="ch2_active" value="0"/>
+        <int name="ch2_active" value="1"/>
         <int name="ch2_power" value="0"/>
-        <int name="ch2_temp_big" value="0"/>
+        <int name="ch2_temp_big" value="23"/>
         <int name="ch2_temp_small" value="0"/>
         
-        <int name="page" value="0"/>
+        <int name="pageSelect" value="0"/>
 
+        <int name="targetTemp" value="30"/>
         <string name="opTime" value="00:00"/>
         <string name="command" value="START"/>
     </subjects>

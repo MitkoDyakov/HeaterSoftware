@@ -36,12 +36,16 @@ lv_obj_t * home_create(void)
     LV_TRACE_OBJ_CREATE("begin");
 
     static lv_style_t main;
+    static lv_style_t fade;
 
     static bool style_inited = false;
 
     if (!style_inited) {
         lv_style_init(&main);
         lv_style_set_bg_color(&main, BACKGRAUND);
+
+        lv_style_init(&fade);
+        lv_style_set_opa(&fade, 190);
 
         style_inited = true;
     }
@@ -66,8 +70,9 @@ lv_obj_t * home_create(void)
     lv_obj_set_width(row_1, 89);
     lv_obj_set_height(row_1, 49);
 
-    lv_obj_t * channel_0 = channel_create(row_1, "CH1", "24°", ".9", 0, 0);
+    lv_obj_t * channel_0 = channel_create(row_1, "CH1", &ch1_temp_big, &ch1_temp_small, 0, 0);
     lv_obj_set_style_pad_all(channel_0, 0, 0);
+    lv_obj_bind_style(channel_0, &fade, 0, &ch1_active, 0);
 
 
 
@@ -76,8 +81,9 @@ lv_obj_t * home_create(void)
     lv_obj_set_height(row_2, 49);
     lv_obj_set_style_margin_top(row_2, 4, 0);
 
-    lv_obj_t * channel_1 = channel_create(row_2, "CH2", "35°", ".7", 0, 0);
+    lv_obj_t * channel_1 = channel_create(row_2, "CH2", &ch2_temp_big, &ch2_temp_small, 0, 0);
     lv_obj_set_style_pad_all(channel_1, 0, 0);
+    lv_obj_bind_style(channel_1, &fade, 0, &ch2_active, 0);
 
 
 
@@ -102,7 +108,7 @@ lv_obj_t * home_create(void)
     lv_obj_set_width(row_4, 141);
     lv_obj_set_height(row_4, 83);
 
-    lv_obj_t * target_tmp_0 = target_tmp_create(row_4, "30°");
+    lv_obj_t * target_tmp_0 = target_tmp_create(row_4, &targetTemp);
     lv_obj_set_style_pad_all(target_tmp_0, 0, 0);
 
 
@@ -112,7 +118,7 @@ lv_obj_t * home_create(void)
     lv_obj_set_height(row_5, 39);
     lv_obj_set_style_margin_top(row_5, 4, 0);
 
-    lv_obj_t * control_0 = control_create(row_5, "START", "00:00");
+    lv_obj_t * control_0 = control_create(row_5, &command, &opTime);
     lv_obj_set_style_pad_all(control_0, 0, 0);
 
 

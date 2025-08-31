@@ -31,7 +31,7 @@ extern "C" {
  **********************/
 
 
-lv_obj_t * target_tmp_create(lv_obj_t * parent, const char * target_temp);
+lv_obj_t * target_tmp_create(lv_obj_t * parent, lv_subject_t * target_temp);
 
 /**********************
  *      MACROS
