@@ -1,9 +1,9 @@
 /**
- * @file home_gen.h
+ * @file control_gen.h
  */
 
-#ifndef HOME_H
-#define HOME_H
+#ifndef CONTROL_H
+#define CONTROL_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,9 +27,7 @@ extern "C" {
  **********************/
 
 
-
-
-lv_obj_t * home_create(void);
+lv_obj_t * control_create(lv_obj_t * parent, const char * command, const char * time);
 
 /**********************
  *      MACROS
@@ -39,4 +37,4 @@ lv_obj_t * home_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*HOME_H*/
+#endif /*CONTROL_H*/

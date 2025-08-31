@@ -30,12 +30,12 @@
  * Translations
  *----------------*/
 static const char * translation_languages[] = {"en", "de", NULL};
-static const char * translation_tags[] = {"ARM", "STOP", "CH", "TARGETTEMP", NULL};
+static const char * translation_tags[] = {"ARM", "STOP", "CH", "TARGET TEMP", NULL};
 static const char * translation_texts[] = {
     "ARM", "ARM", /* ARM */
     "STOP", "HALT", /* STOP */
     "CH", "KN", /* CH */
-    "TARGET TEMP", "TARGET TEMP", /* TARGETTEMP */
+    "TARGET TEMP", "TARGET TEMP", /* TARGET TEMP */
 };
 
 /**********************

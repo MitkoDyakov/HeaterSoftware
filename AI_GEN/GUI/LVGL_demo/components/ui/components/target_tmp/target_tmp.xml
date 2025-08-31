@@ -14,7 +14,7 @@
     <view scrollable="false">
         <style name="main" />
         <lv_image src="target_bg" style_pad_all="0"></lv_image>
-        <lv_label style_text_font="font_ch_label_temp_small" text-translated="TARGET TEMP" style_text_color="#subtext" style_text_align="center" x="7" y="17" width="52" height="51" />
+        <lv_label style_text_font="font_ch_label_temp_small" text-translated="TARGETTEMP" style_text_color="#subtext" style_text_align="center" x="4" y="17" width="62" height="51" />
         <lv_label style_text_font="font_target_temp" text="$target_temp" style_text_color="#maintext" x="62" y="5"/>
     </view>
 </component>

@@ -56,10 +56,13 @@ lv_obj_t * row_create(lv_obj_t * parent)
     }
 
     lv_obj_t * lv_obj_0 = lv_obj_create(parent);
+    lv_obj_set_flag(lv_obj_0, LV_OBJ_FLAG_SCROLLABLE, false);
     lv_obj_add_style(lv_obj_0, &main, 0);
 
 
     LV_TRACE_OBJ_CREATE("finished");
+
+    // lv_obj_set_name(lv_obj_0, "row_#");
 
     return lv_obj_0;
 }

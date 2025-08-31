@@ -1,0 +1,21 @@
+<component>
+    <api>
+        <prop name="command" type="string" default="START"></prop>
+        <prop name="time" type="string" default="00:00"></prop>
+    </api>
+ 
+     <previews>
+        <preview name="control" style_bg_color="#backgraund" width="141" height="39" />
+    </previews>
+
+    <styles>
+        <style name="main" width="141" height="39"  pad_all="0" margin_all="0" border_width="0" text_font="font_start_card"/>
+    </styles>
+    
+    <view scrollable="false">
+        <style name="main" />
+        <lv_image src="start_bg"></lv_image>
+        <lv_label text="$command" x="76" y="0"></lv_label>
+        <lv_label text="$time" x="5" y="0"></lv_label>
+    </view>
+</component>

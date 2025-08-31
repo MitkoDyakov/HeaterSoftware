@@ -1,9 +1,9 @@
 /**
- * @file icon_gen.h
+ * @file channel_gen.h
  */
 
-#ifndef ICON_H
-#define ICON_H
+#ifndef CHANNEL_H
+#define CHANNEL_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,7 +28,7 @@ extern "C" {
  **********************/
 
 
-lv_obj_t * icon_create(lv_obj_t * parent);
+lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, const char * temp_big, const char * temp_small, int32_t active, int32_t power);
 
 /**********************
  *      MACROS
@@ -38,4 +38,4 @@ lv_obj_t * icon_create(lv_obj_t * parent);
 } /*extern "C"*/
 #endif
 
-#endif /*ICON_H*/
+#endif /*CHANNEL_H*/

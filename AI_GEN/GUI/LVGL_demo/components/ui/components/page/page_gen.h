@@ -1,9 +1,9 @@
 /**
- * @file home_gen.h
+ * @file page_gen.h
  */
 
-#ifndef HOME_H
-#define HOME_H
+#ifndef PAGE_H
+#define PAGE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,9 +27,7 @@ extern "C" {
  **********************/
 
 
-
-
-lv_obj_t * home_create(void);
+lv_obj_t * page_create(lv_obj_t * parent, int32_t active_page);
 
 /**********************
  *      MACROS
@@ -39,4 +37,4 @@ lv_obj_t * home_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*HOME_H*/
+#endif /*PAGE_H*/

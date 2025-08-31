@@ -1,9 +1,9 @@
 /**
- * @file home_gen.h
+ * @file target_tmp_gen.h
  */
 
-#ifndef HOME_H
-#define HOME_H
+#ifndef TARGET_TMP_H
+#define TARGET_TMP_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,9 +27,7 @@ extern "C" {
  **********************/
 
 
-
-
-lv_obj_t * home_create(void);
+lv_obj_t * target_tmp_create(lv_obj_t * parent, const char * target_temp);
 
 /**********************
  *      MACROS
@@ -39,4 +37,4 @@ lv_obj_t * home_create(void);
 } /*extern "C"*/
 #endif
 
-#endif /*HOME_H*/
+#endif /*TARGET_TMP_H*/
