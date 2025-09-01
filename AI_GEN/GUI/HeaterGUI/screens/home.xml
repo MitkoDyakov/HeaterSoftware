@@ -8,13 +8,13 @@
           <column width="89" height="100%" style_bg_opa="0" style_pad_right="2">
             <row width="89" height="49">
               <!-- channel 1 component here -->
-              <channel channel="CH1" active="0" power="0" temp_small="ch1_temp_small" temp_big="ch1_temp_big" style_pad_all="0">
+              <channel channel="CH1" active="0" power="255" temp_small="ch1_temp_small" temp_big="ch1_temp_big" style_pad_all="0">
                  <bind_state_if_eq subject="ch1_active" ref_value="0" state="disabled" />
               </channel>
             </row>
             <row width="89" height="49" style_margin_top="4">
               <!-- channel 2 component here  -->
-              <channel channel="CH2" active="0" power="0" temp_small="ch2_temp_small" temp_big="ch2_temp_big" style_pad_all="0">
+              <channel channel="CH2" active="0" power="255" temp_small="ch2_temp_small" temp_big="ch2_temp_big" style_pad_all="0">
                   <bind_state_if_eq subject="ch2_active" ref_value="0" state="disabled"/>
               </channel>
             </row>

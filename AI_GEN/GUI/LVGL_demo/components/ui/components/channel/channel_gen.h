@@ -12,8 +12,11 @@ extern "C" {
 /*********************
  *      INCLUDES
  *********************/
-#include "lvgl.h"
-
+#ifdef LV_LVGL_H_INCLUDE_SIMPLE
+    #include "lvgl.h"
+#else
+    #include "lvgl/lvgl.h"
+#endif
 
 /*********************
  *      DEFINES
@@ -28,7 +31,7 @@ extern "C" {
  **********************/
 
 
-lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, const char * temp_big, const char * temp_small, int32_t active, int32_t power);
+lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t * temp_big, lv_subject_t * temp_small, int32_t active, int32_t power);
 
 /**********************
  *      MACROS

@@ -31,7 +31,7 @@
  *   GLOBAL FUNCTIONS
  **********************/
 
-lv_obj_t * control_create(lv_obj_t * parent, const char * command, const char * time)
+lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_t * time)
 {
     LV_TRACE_OBJ_CREATE("begin");
 
@@ -60,14 +60,12 @@ lv_obj_t * control_create(lv_obj_t * parent, const char * command, const char * 
 
 
     lv_obj_t * lv_label_0 = lv_label_create(lv_obj_0);
-    lv_label_set_text(lv_label_0, command);
-    lv_obj_set_x(lv_label_0, 76);
+    lv_label_bind_text(lv_label_0, command, NULL);lv_obj_set_x(lv_label_0, 76);
     lv_obj_set_y(lv_label_0, 0);
 
 
     lv_obj_t * lv_label_1 = lv_label_create(lv_obj_0);
-    lv_label_set_text(lv_label_1, time);
-    lv_obj_set_x(lv_label_1, 5);
+    lv_label_bind_text(lv_label_1, time, NULL);lv_obj_set_x(lv_label_1, 5);
     lv_obj_set_y(lv_label_1, 0);
 
 

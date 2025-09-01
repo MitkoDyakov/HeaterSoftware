@@ -89,6 +89,7 @@ lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t 
     lv_obj_t * lv_label_3 = lv_label_create(lv_image_0);
     lv_label_set_text(lv_label_3, "•");
     lv_obj_set_style_text_font(lv_label_3, font_channel_dot, 0);
+    lv_obj_set_style_opa(lv_label_3, power, 0);
     lv_obj_set_style_text_color(lv_label_3, RED, 0);
     lv_obj_set_x(lv_label_3, 9);
     lv_obj_set_y(lv_label_3, 9);

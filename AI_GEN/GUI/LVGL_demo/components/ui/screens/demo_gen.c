@@ -111,6 +111,8 @@ lv_obj_t * demo_create(void)
 
     LV_TRACE_OBJ_CREATE("finished");
 
+    // lv_obj_set_name(lv_obj_0, "demo");
+
     return lv_obj_0;
 }
 

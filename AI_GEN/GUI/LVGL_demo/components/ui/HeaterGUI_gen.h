@@ -17,8 +17,11 @@ extern "C" {
  *      INCLUDES
  *********************/
 
-#include "lvgl.h"
-
+#ifdef LV_LVGL_H_INCLUDE_SIMPLE
+    #include "lvgl.h"
+#else
+    #include "lvgl/lvgl.h"
+#endif
 
 /*********************
  *      DEFINES
@@ -97,7 +100,8 @@ extern lv_subject_t ch2_active;
 extern lv_subject_t ch2_power;
 extern lv_subject_t ch2_temp_big;
 extern lv_subject_t ch2_temp_small;
-extern lv_subject_t page;
+extern lv_subject_t pageSelect;
+extern lv_subject_t targetTemp;
 extern lv_subject_t opTime;
 extern lv_subject_t command;
 

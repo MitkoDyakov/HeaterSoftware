@@ -16,16 +16,20 @@
         <lv_image src="page_bg" style_pad_all="0"/>
         <style name="main" />
         <lv_label text="•" x="24" y="-8">
-            <bind_style name="selected" subject="pageSelect" ref_value="0"/>
+            <style name="selected" selector="checked"/>
+            <bind_state_if_eq state="checked" subject="pageSelect" ref_value="0"/>
         </lv_label>
         <lv_label text="•" x="34" y="-8">
-            <bind_style name="selected" subject="pageSelect" ref_value="1"/>
+            <style name="selected" selector="checked"/>
+            <bind_state_if_eq state="checked" subject="pageSelect" ref_value="1"/>
         </lv_label>
         <lv_label text="•" x="44" y="-8">
-            <bind_style name="selected" subject="pageSelect" ref_value="2"/>
+            <style name="selected" selector="checked"/>
+            <bind_state_if_eq state="checked" subject="pageSelect" ref_value="2"/>
         </lv_label>
         <lv_label text="•" x="54" y="-8">
-            <bind_style name="selected" subject="pageSelect" ref_value="3"/>
+            <style name="selected" selector="checked"/>
+            <bind_state_if_eq state="checked" subject="pageSelect" ref_value="3"/>
         </lv_label>
     </view>
 </component>

@@ -94,7 +94,8 @@ lv_subject_t ch2_active;
 lv_subject_t ch2_power;
 lv_subject_t ch2_temp_big;
 lv_subject_t ch2_temp_small;
-lv_subject_t page;
+lv_subject_t pageSelect;
+lv_subject_t targetTemp;
 lv_subject_t opTime;
 lv_subject_t command;
 
@@ -162,15 +163,16 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_subject_init_int(&btn_right_2, 0);
     lv_subject_init_int(&btn_right_3, 0);
     lv_subject_init_int(&btn_center, 0);
-    lv_subject_init_int(&ch1_active, 0);
+    lv_subject_init_int(&ch1_active, 1);
     lv_subject_init_int(&ch1_power, 0);
-    lv_subject_init_int(&ch1_temp_big, 0);
-    lv_subject_init_int(&ch1_temp_small, 0);
-    lv_subject_init_int(&ch2_active, 0);
+    lv_subject_init_int(&ch1_temp_big, 24);
+    lv_subject_init_int(&ch1_temp_small, 9);
+    lv_subject_init_int(&ch2_active, 1);
     lv_subject_init_int(&ch2_power, 0);
-    lv_subject_init_int(&ch2_temp_big, 0);
+    lv_subject_init_int(&ch2_temp_big, 23);
     lv_subject_init_int(&ch2_temp_small, 0);
-    lv_subject_init_int(&page, 0);
+    lv_subject_init_int(&pageSelect, 0);
+    lv_subject_init_int(&targetTemp, 30);
     static char opTime_buf[UI_SUBJECT_STRING_LENGTH];
     static char opTime_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&opTime,
@@ -220,7 +222,8 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "ch2_power", &ch2_power);
     lv_xml_register_subject(NULL, "ch2_temp_big", &ch2_temp_big);
     lv_xml_register_subject(NULL, "ch2_temp_small", &ch2_temp_small);
-    lv_xml_register_subject(NULL, "page", &page);
+    lv_xml_register_subject(NULL, "pageSelect", &pageSelect);
+    lv_xml_register_subject(NULL, "targetTemp", &targetTemp);
     lv_xml_register_subject(NULL, "opTime", &opTime);
     lv_xml_register_subject(NULL, "command", &command);
 

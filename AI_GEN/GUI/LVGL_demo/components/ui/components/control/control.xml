@@ -1,7 +1,7 @@
 <component>
     <api>
-        <prop name="command" type="string" default="START"></prop>
-        <prop name="time" type="string" default="00:00"></prop>
+        <prop name="command" type="subject" default="START"></prop>
+        <prop name="time" type="subject" default="00:00"></prop>
     </api>
  
      <previews>
@@ -15,7 +15,7 @@
     <view scrollable="false">
         <style name="main" />
         <lv_image src="start_bg"></lv_image>
-        <lv_label text="$command" x="76" y="0"></lv_label>
-        <lv_label text="$time" x="5" y="0"></lv_label>
+        <lv_label bind_text="$command" x="76" y="0"></lv_label>
+        <lv_label bind_text="$time" x="5" y="0"></lv_label>
     </view>
 </component>

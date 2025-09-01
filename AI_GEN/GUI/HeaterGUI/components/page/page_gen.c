@@ -69,28 +69,32 @@ lv_obj_t * page_create(lv_obj_t * parent, int32_t active_page)
     lv_label_set_text(lv_label_0, "•");
     lv_obj_set_x(lv_label_0, 24);
     lv_obj_set_y(lv_label_0, -8);
-    lv_obj_bind_style(lv_label_0, &selected, 0, &pageSelect, 0);
+    lv_obj_add_style(lv_label_0, &selected, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_0, &pageSelect, LV_STATE_CHECKED, 0);
 
 
     lv_obj_t * lv_label_1 = lv_label_create(lv_obj_0);
     lv_label_set_text(lv_label_1, "•");
     lv_obj_set_x(lv_label_1, 34);
     lv_obj_set_y(lv_label_1, -8);
-    lv_obj_bind_style(lv_label_1, &selected, 0, &pageSelect, 1);
+    lv_obj_add_style(lv_label_1, &selected, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_1, &pageSelect, LV_STATE_CHECKED, 1);
 
 
     lv_obj_t * lv_label_2 = lv_label_create(lv_obj_0);
     lv_label_set_text(lv_label_2, "•");
     lv_obj_set_x(lv_label_2, 44);
     lv_obj_set_y(lv_label_2, -8);
-    lv_obj_bind_style(lv_label_2, &selected, 0, &pageSelect, 2);
+    lv_obj_add_style(lv_label_2, &selected, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_2, &pageSelect, LV_STATE_CHECKED, 2);
 
 
     lv_obj_t * lv_label_3 = lv_label_create(lv_obj_0);
     lv_label_set_text(lv_label_3, "•");
     lv_obj_set_x(lv_label_3, 54);
     lv_obj_set_y(lv_label_3, -8);
-    lv_obj_bind_style(lv_label_3, &selected, 0, &pageSelect, 3);
+    lv_obj_add_style(lv_label_3, &selected, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_3, &pageSelect, LV_STATE_CHECKED, 3);
 
 
 

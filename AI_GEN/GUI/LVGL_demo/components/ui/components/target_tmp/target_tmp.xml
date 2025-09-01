@@ -1,6 +1,6 @@
 <component>
     <api>
-        <prop name="target_temp" type="string" default="24°"></prop>
+        <prop name="target_temp" type="subject" default="24"></prop>
     </api>
  
      <previews>
@@ -14,7 +14,7 @@
     <view scrollable="false">
         <style name="main" />
         <lv_image src="target_bg" style_pad_all="0"></lv_image>
-        <lv_label style_text_font="font_ch_label_temp_small" text-translated="TARGETTEMP" style_text_color="#subtext" style_text_align="center" x="4" y="17" width="62" height="51" />
-        <lv_label style_text_font="font_target_temp" text="$target_temp" style_text_color="#maintext" x="62" y="5"/>
+        <lv_label style_text_font="font_ch_label_temp_small" text-translated="TARGET TEMP" style_text_color="#subtext" style_text_align="center" x="7" y="17" width="52" height="51" />
+        <lv_label style_text_font="font_target_temp" style_text_align="right" bind_text-fmt="%i°" bind_text="$target_temp" style_text_color="#maintext" x="50" y="6" width="74" height="78"/>
     </view>
 </component>

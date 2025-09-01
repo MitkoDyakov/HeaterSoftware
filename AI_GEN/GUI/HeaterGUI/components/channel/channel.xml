@@ -22,6 +22,6 @@
         <lv_label bind_text-fmt="%i°" bind_text="$temp_big" style_text_font="font_ch_temp_big" style_text_align="right" style_text_color="#maintext" x="26" y="-2"  width="54" height="54"> </lv_label>
         <lv_label text="$channel" style_text_font="font_ch_label_temp_small" style_text_color="#subtext" x="6" y="4"> </lv_label>
         <lv_label bind_text-fmt=".%i" bind_text="$temp_small" style_text_font="font_ch_label_temp_small" style_text_color="#maintext" x="69" y="20"> </lv_label>
-        <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#red" x="9" y="9"> </lv_label>        
+        <lv_label text="•" style_text_font="font_channel_dot" style_opa="$power" style_text_color="#red" x="9" y="9"> </lv_label>        
     </view>
 </component>
