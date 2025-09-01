@@ -131,7 +131,6 @@ void HeaterGUI_init_gen(const char * asset_path);
 #include "components/channel/channel_gen.h"
 #include "components/column/column_gen.h"
 #include "components/control/control_gen.h"
-#include "components/icon/icon_gen.h"
 #include "components/page/page_gen.h"
 #include "components/row/row_gen.h"
 #include "components/target_tmp/target_tmp_gen.h"

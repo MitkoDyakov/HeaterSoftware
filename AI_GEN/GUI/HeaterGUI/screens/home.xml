@@ -1,7 +1,6 @@
 <screen permanent="true">
     <styles>
         <style name="main" bg_color="#backgraund"/>
-        <style name="fade" opa="190"/>
     </styles>
     <view width="240" height="135">
         <style name="main"/>
@@ -10,13 +9,13 @@
             <row width="89" height="49">
               <!-- channel 1 component here -->
               <channel channel="CH1" active="0" power="0" temp_small="ch1_temp_small" temp_big="ch1_temp_big" style_pad_all="0">
-                <bind_style name="fade" subject="ch1_active" ref_value="0"/>
+                 <bind_state_if_eq subject="ch1_active" ref_value="0" state="disabled" />
               </channel>
             </row>
             <row width="89" height="49" style_margin_top="4">
               <!-- channel 2 component here  -->
               <channel channel="CH2" active="0" power="0" temp_small="ch2_temp_small" temp_big="ch2_temp_big" style_pad_all="0">
-                <bind_style name="fade" subject="ch2_active" ref_value="0"/>
+                  <bind_state_if_eq subject="ch2_active" ref_value="0" state="disabled"/>
               </channel>
             </row>
             <row width="89" height="20" style_margin_top="4">

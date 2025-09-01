@@ -4,7 +4,6 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/channel/channel_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/column/column_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/control/control_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/components/icon/icon_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/page/page_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/row/row_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/components/target_tmp/target_tmp_gen.c
