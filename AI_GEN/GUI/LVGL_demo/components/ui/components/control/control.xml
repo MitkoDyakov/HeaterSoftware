@@ -15,7 +15,7 @@
     <view scrollable="false">
         <style name="main" />
         <lv_image src="start_bg"></lv_image>
-        <lv_label bind_text="$command" x="76" y="0"></lv_label>
+        <lv_label style_text_align="center" bind_text="$command" x="70"  width="65" height="40"></lv_label>
         <lv_label bind_text="$time" x="5" y="0"></lv_label>
     </view>
 </component>
