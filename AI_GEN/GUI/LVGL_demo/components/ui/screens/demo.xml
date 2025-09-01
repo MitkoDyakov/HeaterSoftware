@@ -1,0 +1,56 @@
+<screen>
+  <view width="240" height="135">
+    <!-- Left column: x = +10 from left, y offsets -45 / 0 / +45 from middle -->
+    <lv_obj align="center">
+      <style name="dot_base"/>
+      <style name="dot_red" selector="checked"/>
+      <bind_state_if_eq subject="btn_center" state="checked" ref_value="1"/>
+    </lv_obj>
+
+    <lv_obj align="left_mid"  x="10"  y="-45">
+      <style name="dot_base"/>
+      <style name="dot_red" selector="checked"/>
+      <bind_state_if_eq subject="btn_left_1" state="checked" ref_value="1"/>
+    </lv_obj>
+
+    <lv_obj align="left_mid"  x="10"  y="0">
+      <style name="dot_base"/>
+      <style name="dot_red" selector="checked"/> 
+      <bind_state_if_eq subject="btn_left_2" state="checked" ref_value="1"/>
+    </lv_obj>
+
+    <lv_obj align="left_mid"  x="10"  y="45">
+      <style name="dot_base"/>
+      <style name="dot_red" selector="checked"/>
+      <bind_state_if_eq subject="btn_left_3" state="checked" ref_value="1"/>
+    </lv_obj>
+
+    <!-- Right column: x = -10 from right -->
+    <lv_obj align="right_mid" x="-10" y="-45">
+      <style name="dot_base"/>
+      <style name="dot_red" selector="checked"/>
+      <bind_state_if_eq subject="btn_right_1" state="checked" ref_value="1"/>
+    </lv_obj>
+
+    <lv_obj align="right_mid" x="-10" y="0">
+      <style name="dot_base"/>
+      <style name="dot_red" selector="checked"/>
+      <bind_state_if_eq subject="btn_right_2" state="checked" ref_value="1"/>
+    </lv_obj>
+
+    <lv_obj align="right_mid" x="-10" y="45">
+      <style name="dot_base"/>
+      <style name="dot_red" selector="checked"/>
+      <bind_state_if_eq subject="btn_right_3" state="checked" ref_value="1"/>
+    </lv_obj>
+
+    <!-- (Optional) quick test buttons to flip a subject while in the Editor -->
+    <!--
+    <lv_button align="center" y="60" width="80" height="28">
+      <lv_label text="Toggle L1"/>
+      <subject_set_int_event trigger="clicked" subject="btn_left_1" value="1"/>
+      <subject_set_int_event trigger="released" subject="btn_left_1" value="0"/>
+    </lv_button>
+    -->
+  </view>
+</screen>

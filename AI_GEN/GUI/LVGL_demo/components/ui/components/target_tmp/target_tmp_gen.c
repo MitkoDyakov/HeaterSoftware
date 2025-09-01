@@ -82,7 +82,7 @@ lv_obj_t * target_tmp_create(lv_obj_t * parent, lv_subject_t * target_temp)
 
     LV_TRACE_OBJ_CREATE("finished");
 
-    // lv_obj_set_name(lv_obj_0, "target_tmp_#");
+    lv_obj_set_name(lv_obj_0, "target_tmp_#");
 
     return lv_obj_0;
 }

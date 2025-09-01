@@ -31,12 +31,11 @@
  *   GLOBAL FUNCTIONS
  **********************/
 
-lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t * temp_big, lv_subject_t * temp_small, int32_t active, int32_t power)
+lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t * temp_big, lv_subject_t * temp_small, lv_subject_t * ch_active)
 {
     LV_TRACE_OBJ_CREATE("begin");
 
     static lv_style_t main;
-    static lv_style_t off;
 
     static bool style_inited = false;
 
@@ -48,9 +47,6 @@ lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t 
         lv_style_set_margin_all(&main, 0);
         lv_style_set_border_width(&main, 0);
 
-        lv_style_init(&off);
-        lv_style_set_text_opa(&off, 80);
-
         style_inited = true;
     }
 
@@ -59,7 +55,6 @@ lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t 
     lv_image_set_src(lv_image_0, channel_bg);
     lv_image_set_inner_align(lv_image_0, LV_IMAGE_ALIGN_STRETCH);
     lv_obj_add_style(lv_image_0, &main, 0);
-    lv_obj_add_style(lv_image_0, &off, LV_STATE_DISABLED);
 
     lv_obj_t * lv_label_0 = lv_label_create(lv_image_0);
     lv_label_bind_text(lv_label_0, temp_big, "%i°");lv_obj_set_style_text_font(lv_label_0, font_ch_temp_big, 0);
@@ -87,9 +82,7 @@ lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t 
 
 
     lv_obj_t * lv_label_3 = lv_label_create(lv_image_0);
-    lv_label_set_text(lv_label_3, "•");
-    lv_obj_set_style_text_font(lv_label_3, font_channel_dot, 0);
-    lv_obj_set_style_opa(lv_label_3, power, 0);
+    lv_label_bind_text(lv_label_3, ch_active, NULL);lv_obj_set_style_text_font(lv_label_3, font_channel_dot, 0);
     lv_obj_set_style_text_color(lv_label_3, RED, 0);
     lv_obj_set_x(lv_label_3, 9);
     lv_obj_set_y(lv_label_3, 9);
@@ -98,7 +91,7 @@ lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t 
 
     LV_TRACE_OBJ_CREATE("finished");
 
-    // lv_obj_set_name(lv_image_0, "channel_#");
+    lv_obj_set_name(lv_image_0, "channel_#");
 
     return lv_image_0;
 }

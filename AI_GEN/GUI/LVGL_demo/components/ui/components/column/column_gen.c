@@ -62,7 +62,7 @@ lv_obj_t * column_create(lv_obj_t * parent)
 
     LV_TRACE_OBJ_CREATE("finished");
 
-    // lv_obj_set_name(lv_obj_0, "column_#");
+    lv_obj_set_name(lv_obj_0, "column_#");
 
     return lv_obj_0;
 }

@@ -29,6 +29,13 @@
 #include "home_gen.h"
 #include "HeaterGUI_gen.h"
 
+char dot = '•';
+
+void lv_obj_set_name(lv_obj_t *obj, const char *name)
+{
+
+}
+
 const static char *TAG = "DISPLAY";
 
 // ---------- Tuning ----------
@@ -160,6 +167,8 @@ static void scan_timer_callback(TimerHandle_t t) {
 static void vConsoleTask(void *arg) {
     event_msg_t msg;
     static bool opStat = false;
+    static bool chan1 = true;
+    static bool chan2 = true;
     int t;
     for (;;) {
         if (xQueueReceive(event_queue, &msg, portMAX_DELAY) == pdTRUE) {
@@ -217,14 +226,21 @@ static void vConsoleTask(void *arg) {
                         break;
                     case 47:
                         //"LEFT_CENTER"
-                        t = lv_subject_get_int(&ch2_active);
-                        lv_subject_set_int(&ch2_active, !t);
+                        chan2 = !chan2;
+                        if(chan2){
+                            lv_subject_copy_string(&ch2_active, "•");
+                        }else{
+                            lv_subject_copy_string(&ch2_active, " ");
+                        }
                         break;
                     case 48:
                         //"LEFT_TOP"
-                        
-                        t = lv_subject_get_int(&ch1_active);
-                        lv_subject_set_int(&ch1_active, !t);
+                        chan1 = !chan1;
+                        if(chan1){
+                            lv_subject_copy_string(&ch1_active, "•");
+                        }else{
+                            lv_subject_copy_string(&ch1_active, " ");
+                        }
 
                         break;
                 }

@@ -66,9 +66,8 @@ lv_obj_t * home_create(void)
     lv_obj_set_width(row_1, 89);
     lv_obj_set_height(row_1, 49);
 
-    lv_obj_t * channel_0 = channel_create(row_1, "CH1", &ch1_temp_big, &ch1_temp_small, 0, 255);
+    lv_obj_t * channel_0 = channel_create(row_1, "CH1", &ch1_temp_big, &ch1_temp_small, &ch1_active);
     lv_obj_set_style_pad_all(channel_0, 0, 0);
-    lv_obj_bind_state_if_eq(channel_0, &ch1_active, LV_STATE_DISABLED, 0);
 
 
 
@@ -77,9 +76,8 @@ lv_obj_t * home_create(void)
     lv_obj_set_height(row_2, 49);
     lv_obj_set_style_margin_top(row_2, 4, 0);
 
-    lv_obj_t * channel_1 = channel_create(row_2, "CH2", &ch2_temp_big, &ch2_temp_small, 0, 255);
+    lv_obj_t * channel_1 = channel_create(row_2, "CH2", &ch2_temp_big, &ch2_temp_small, &ch2_active);
     lv_obj_set_style_pad_all(channel_1, 0, 0);
-    lv_obj_bind_state_if_eq(channel_1, &ch2_active, LV_STATE_DISABLED, 0);
 
 
 
@@ -124,7 +122,7 @@ lv_obj_t * home_create(void)
 
     LV_TRACE_OBJ_CREATE("finished");
 
-    // lv_obj_set_name(lv_obj_0, "home");
+    lv_obj_set_name(lv_obj_0, "home");
 
     return lv_obj_0;
 }

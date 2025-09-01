@@ -34,13 +34,11 @@
         <int name="btn_right_3" value="0"/>
         <int name="btn_center" value="0"/>
 
-        <int name="ch1_active" value="1"/>
-        <int name="ch1_power" value="0"/>
+        <string name="ch1_active" value="•"/>
         <int name="ch1_temp_big" value="24"/>
         <int name="ch1_temp_small" value="9"/>
 
-        <int name="ch2_active" value="1"/>
-        <int name="ch2_power" value="0"/>
+        <string name="ch2_active" value="•"/>
         <int name="ch2_temp_big" value="23"/>
         <int name="ch2_temp_small" value="0"/>
         
