@@ -59,10 +59,10 @@
     </images>
 
     <fonts>
-        <tiny_ttf name="font_ch_label_temp_small" size="24" src_path="fonts/LeagueGothic.ttf"/>
-        <tiny_ttf name="font_start_card" size="34" src_path="fonts/LeagueGothic.ttf"/>
-        <tiny_ttf name="font_ch_temp_big" size="46" src_path="fonts/LeagueGothic.ttf"/>
-        <tiny_ttf name="font_channel_dot" size="50" src_path="fonts/LeagueGothic.ttf"/>
-        <tiny_ttf name="font_target_temp" size="64" src_path="fonts/LeagueGothic.ttf"/>
+        <tiny_ttf name="font_ch_label_temp_small" size="24" src_path="fonts/LaugeGothic_mode.ttf"/>
+        <tiny_ttf name="font_start_card" size="34" src_path="fonts/LaugeGothic_mode.ttf"/>
+        <tiny_ttf name="font_ch_temp_big" size="46" src_path="fonts/LaugeGothic_mode.ttf"/>
+        <tiny_ttf name="font_channel_dot" size="50" src_path="fonts/LaugeGothic_mode.ttf"/>
+        <tiny_ttf name="font_target_temp" size="64" src_path="fonts/LaugeGothic_mode.ttf"/>
     </fonts>
 </globals>

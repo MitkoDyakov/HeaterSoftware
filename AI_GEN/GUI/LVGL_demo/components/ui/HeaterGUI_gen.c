@@ -57,8 +57,8 @@ lv_style_t dot_red;
  * Fonts
  *----------------*/
 lv_font_t * font_ch_label_temp_small;
-extern uint8_t LeagueGothic_ttf_data[];
-extern size_t LeagueGothic_ttf_data_size;
+extern uint8_t LaugeGothic_mode_ttf_data[];
+extern size_t LaugeGothic_mode_ttf_data_size;
 lv_font_t * font_start_card;
 lv_font_t * font_ch_temp_big;
 lv_font_t * font_channel_dot;
@@ -134,15 +134,15 @@ void HeaterGUI_init_gen(const char * asset_path)
      * Fonts
      *----------------*/
     /* create tiny ttf font 'font_ch_label_temp_small' from C array */
-    font_ch_label_temp_small = lv_tiny_ttf_create_data(LeagueGothic_ttf_data, LeagueGothic_ttf_data_size, 24);
+    font_ch_label_temp_small = lv_tiny_ttf_create_data(LaugeGothic_mode_ttf_data, LaugeGothic_mode_ttf_data_size, 24);
     /* create tiny ttf font 'font_start_card' from C array */
-    font_start_card = lv_tiny_ttf_create_data(LeagueGothic_ttf_data, LeagueGothic_ttf_data_size, 34);
+    font_start_card = lv_tiny_ttf_create_data(LaugeGothic_mode_ttf_data, LaugeGothic_mode_ttf_data_size, 34);
     /* create tiny ttf font 'font_ch_temp_big' from C array */
-    font_ch_temp_big = lv_tiny_ttf_create_data(LeagueGothic_ttf_data, LeagueGothic_ttf_data_size, 46);
+    font_ch_temp_big = lv_tiny_ttf_create_data(LaugeGothic_mode_ttf_data, LaugeGothic_mode_ttf_data_size, 46);
     /* create tiny ttf font 'font_channel_dot' from C array */
-    font_channel_dot = lv_tiny_ttf_create_data(LeagueGothic_ttf_data, LeagueGothic_ttf_data_size, 50);
+    font_channel_dot = lv_tiny_ttf_create_data(LaugeGothic_mode_ttf_data, LaugeGothic_mode_ttf_data_size, 50);
     /* create tiny ttf font 'font_target_temp' from C array */
-    font_target_temp = lv_tiny_ttf_create_data(LeagueGothic_ttf_data, LeagueGothic_ttf_data_size, 64);
+    font_target_temp = lv_tiny_ttf_create_data(LaugeGothic_mode_ttf_data, LaugeGothic_mode_ttf_data_size, 64);
 
     /*----------------
      * Images

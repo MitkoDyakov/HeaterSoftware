@@ -67,8 +67,11 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
 
 
     lv_obj_t * lv_label_1 = lv_label_create(lv_obj_0);
-    lv_label_bind_text(lv_label_1, time, NULL);lv_obj_set_x(lv_label_1, 5);
+    lv_obj_set_style_text_align(lv_label_1, LV_TEXT_ALIGN_CENTER, 0);
+    lv_label_bind_text(lv_label_1, time, NULL);lv_obj_set_x(lv_label_1, 1);
     lv_obj_set_y(lv_label_1, 0);
+    lv_obj_set_width(lv_label_1, 70);
+    lv_obj_set_height(lv_label_1, 40);
 
 
 

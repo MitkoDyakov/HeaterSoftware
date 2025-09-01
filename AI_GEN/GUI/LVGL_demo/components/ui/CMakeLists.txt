@@ -9,7 +9,7 @@ idf_component_register(
     "images/page_bg_data.c"
     "images/start_bg_data.c"
     "images/target_bg_data.c"
-    "fonts/LeagueGothic_ttf_data.c"
+    "fonts/LaugeGothic_mode_ttf_data.c"
     "components/channel/channel_gen.c"
     "components/column/column_gen.c"
     "components/control/control_gen.c"

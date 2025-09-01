@@ -12,11 +12,11 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/HeaterGUI_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/ui.c
   ${CMAKE_CURRENT_LIST_DIR}/HeaterGUI.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
-  ${CMAKE_CURRENT_LIST_DIR}/fonts/LeagueGothic_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LaugeGothic_mode_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LaugeGothic_mode_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LaugeGothic_mode_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LaugeGothic_mode_ttf_data.c
+  ${CMAKE_CURRENT_LIST_DIR}/fonts/LaugeGothic_mode_ttf_data.c
   ${CMAKE_CURRENT_LIST_DIR}/images/channel_bg_data.c
   ${CMAKE_CURRENT_LIST_DIR}/images/page_bg_data.c
   ${CMAKE_CURRENT_LIST_DIR}/images/start_bg_data.c
