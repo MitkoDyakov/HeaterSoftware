@@ -29,26 +29,31 @@
 #include "home_gen.h"
 #include "HeaterGUI_gen.h"
 
-char dot = '•';
 
-void lv_obj_set_name(lv_obj_t *obj, const char *name)
-{
-
-}
-
+// patch -p1 < ../../lvgl_translation_fix_forward.patch
 const static char *TAG = "DISPLAY";
+
+__attribute__((weak)) void lv_obj_set_name(lv_obj_t *obj, const char *name)
+{
+    LV_UNUSED(obj);
+    LV_UNUSED(name);
+    // No-op: your UI generator can call this safely; nothing happens.
+}
 
 // ---------- Tuning ----------
 #define DEBOUNCE_MS             30
 #define INITIAL_REPEAT_DELAY_MS 400
 #define REPEAT_MS               400
-#define TIMER_PERIOD_MS         20   // timer tick (scan cadence)
+#define TIMER_PERIOD_MS         20   // button scan cadence
 #define NUM_BUTTONS             6
 
-esp_timer_handle_t lv_clock_timer;
-uint8_t timer_ss = 0;
-uint8_t timer_mm = 0;
-uint8_t timer_hh = 0;
+// We only keep the 1ms LVGL tick esp_timer. The "clock" uses an LVGL timer now.
+static esp_timer_handle_t lv_tick_timer = NULL;
+
+// op time counters
+static uint8_t timer_ss = 0;
+static uint8_t timer_mm = 0;
+static uint8_t timer_hh = 0;
 
 // ---------- Events ----------
 typedef enum {
@@ -70,9 +75,9 @@ typedef struct {
     int        stable_level;
     bool       pressed;
 
-    // debounce edge gating
-    bool       pending;              // ISR saw an edge
-    TickType_t debounce_deadline;    // when to re-sample
+    // debounce edge gating (written in ISR, read in timer task)
+    volatile bool       pending;              // ISR saw an edge
+    volatile TickType_t debounce_deadline;    // when to re-sample
 
     // repeat & short suppression
     TickType_t press_start;
@@ -114,6 +119,7 @@ static void IRAM_ATTR button_isr_handler(void *arg) {
 
 // ---------- Timer callback: debounce + repeat + short ----------
 static void scan_timer_callback(TimerHandle_t t) {
+    (void)t;
     TickType_t now = xTaskGetTickCount();
 
     for (int i = 0; i < NUM_BUTTONS; i++) {
@@ -163,175 +169,32 @@ static void scan_timer_callback(TimerHandle_t t) {
     }
 }
 
-// ---------- Example consumer task ----------
-static void vConsoleTask(void *arg) {
-    event_msg_t msg;
-    static bool opStat = false;
-    static bool chan1 = true;
-    static bool chan2 = true;
-    int t;
-    for (;;) {
-        if (xQueueReceive(event_queue, &msg, portMAX_DELAY) == pdTRUE) {
-            const char *etype = (msg.event == BUTTON_EVENT_SHORT) ? "SHORT" : "REPEAT";
-            ESP_LOGI(TAG, "GPIO %d: %s", msg.btn_id, etype);
-            // TODO: dispatch to your app logic
-            if(msg.event == BUTTON_EVENT_SHORT)
-            {
-                switch(msg.btn_id)
-                {
-                    case 40:
-                        //"RIGHT_BOTTOM"
-                        opStat = !opStat;
-                        if(opStat){
-                            lv_subject_copy_string(&command, "STOP");
-                            esp_timer_start_periodic(lv_clock_timer, 1000 * 1000 ); // 1000 us = 1 ms 1000ms = 1
-                        }else{
-                            lv_subject_copy_string(&command, "START");
-                            timer_ss = 0;
-                            timer_mm = 0;
-                            timer_hh = 0;
-                            lv_subject_copy_string(&opTime, "00:00");
-                            esp_timer_stop(lv_clock_timer); // 1000 us = 1 ms 1000ms = 1
-                        }                         
-                        break;
-                    case 41:
-                        //"RIGHT_TOP"
-                        t = lv_subject_get_int(&targetTemp);
-                        t++;
-                        if(t>60)
-                        {
-                            t = 60;
-                        }
-                        lv_subject_set_int(&targetTemp, t);
-                        break;
-                    case 42:
-                        //"RIGHT_CENTER"
-                        t = lv_subject_get_int(&targetTemp);
-                        t--;
-                        if(t<0)
-                        {
-                            t = 0;
-                        }
-                        lv_subject_set_int(&targetTemp, t);
-                        break;
-                    case 45:
-                        //"LEFT_BOTTOM"
-                        t = lv_subject_get_int(&pageSelect);
-                        t++;
-                        if(t > 3)
-                        {
-                            t=0;
-                        }
-                        lv_subject_set_int(&pageSelect, t);
-                        break;
-                    case 47:
-                        //"LEFT_CENTER"
-                        chan2 = !chan2;
-                        if(chan2){
-                            lv_subject_copy_string(&ch2_active, "•");
-                        }else{
-                            lv_subject_copy_string(&ch2_active, " ");
-                        }
-                        break;
-                    case 48:
-                        //"LEFT_TOP"
-                        chan1 = !chan1;
-                        if(chan1){
-                            lv_subject_copy_string(&ch1_active, "•");
-                        }else{
-                            lv_subject_copy_string(&ch1_active, " ");
-                        }
+// ===================== Display & LVGL =====================
 
-                        break;
-                }
-            }else{
-                switch(msg.btn_id)
-                {
-                    case 41:
-                        //"RIGHT_TOP"
-                        t = lv_subject_get_int(&targetTemp);
-                        t++;
-                        if(t>60)
-                        {
-                            t = 60;
-                        }
-                        lv_subject_set_int(&targetTemp, t);
-                        break;
-                    case 42:
-                        //"RIGHT_CENTER"
-                        t = lv_subject_get_int(&targetTemp);
-                        t--;
-                        if(t<0)
-                        {
-                            t = 0;
-                        }
-                        lv_subject_set_int(&targetTemp, t);
-                        break;
-                }
-            }
-        }
-    }
-}
-
-#define PIN_NUM_MOSI 37 
-#define PIN_NUM_CLK  36 
+#define PIN_NUM_MOSI 37
+#define PIN_NUM_CLK  36
 #define PIN_NUM_CS   35
 #define PIN_NUM_DC   38
-#define PIN_NUM_RST  39 
+#define PIN_NUM_RST  39
 
 #define BACKLIGHT_CONTROL_PIN   (10)
 
 #define IMAGE_WIDTH  240
 #define IMAGE_HEIGHT 135
-#define JPG_BPP      2        // RGB565 = 2 bytes
+#define JPG_BPP      2        // RGB565 = 2 bytes
 
 esp_lcd_panel_handle_t panel_handle = NULL; // Global panel handle
 static void *lvBuffer1;
 static void *lvBuffer2;
 #define draw_buffer_sz (240 * 10)          // Buffer for 10 rows
 
-
-
-static void timer_count(void* arg) {
-    (void)arg;
-    char text[10] = {0};
-
-    timer_ss++;
-    if(60 == timer_ss)
-    {
-        timer_ss = 0;
-        timer_mm++;
-    }
-
-    if(60 == timer_mm)
-    {
-        timer_mm = 0;
-        timer_hh++;
-    }
-
-    if(99 == timer_hh){
-        timer_hh = 0;
-        // beep or something
-    }
-
-    if(timer_ss%2)
-    {
-        sprintf(text, "%02i %02i", timer_hh, timer_mm);
-        lv_subject_copy_string(&opTime, text);
-    }else{
-        sprintf(text, "%02i:%02i", timer_hh, timer_mm);
-        lv_subject_copy_string(&opTime, text);
-    }
-    
-}
-
 static void lv_tick_cb(void* arg) {
     (void)arg;
     lv_tick_inc(1); // called every 1 ms by esp_timer
 }
 
-void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) 
-{    
+void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
+{
     lv_draw_sw_rgb565_swap(px_map, (area->x2 - area->x1 + 1) * (area->y2 - area->y1 + 1));
     esp_lcd_panel_draw_bitmap(panel_handle, area->x1, area->y1, area->x2 + 1, area->y2 + 1, px_map);
 }
@@ -357,7 +220,7 @@ void lvgl_init_display(void)
         .quadhd_io_num = -1,
         .max_transfer_sz = 240 * 10 * 2 + 8
     };
-    spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO);
+    ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
     // Initialize panel IO
     esp_lcd_panel_io_handle_t io_handle = NULL;
@@ -371,30 +234,30 @@ void lvgl_init_display(void)
         .lcd_cmd_bits = 8,
         .lcd_param_bits = 8
     };
-    esp_lcd_new_panel_io_spi(SPI2_HOST, &io_config, &io_handle);
+    ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(SPI2_HOST, &io_config, &io_handle));
 
     // Initialize the display panel
     esp_lcd_panel_dev_config_t panel_config = {
         .reset_gpio_num = PIN_NUM_RST,
-        .color_space = LCD_RGB_ENDIAN_RGB, // Use BGR color space
+        .color_space = LCD_RGB_ENDIAN_RGB,
         .bits_per_pixel = 16
     };
-    esp_lcd_new_panel_st7789(io_handle, &panel_config, &panel_handle);
+    ESP_ERROR_CHECK(esp_lcd_new_panel_st7789(io_handle, &panel_config, &panel_handle));
 
     // Reset and initialize the panel
-    esp_lcd_panel_reset(panel_handle);
-    esp_lcd_panel_init(panel_handle);
-    esp_lcd_panel_set_gap(panel_handle, 40, 53);
-    esp_lcd_panel_invert_color(panel_handle, true);
-    esp_lcd_panel_mirror(panel_handle, true, false);
-    esp_lcd_panel_swap_xy(panel_handle, true);
-    esp_lcd_panel_disp_on_off(panel_handle, true);
+    ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
+    ESP_ERROR_CHECK(esp_lcd_panel_set_gap(panel_handle, 40, 53));
+    ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle, true));
+    ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
+    ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle, true));
+    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
     // Initialize backlight
     gpio_reset_pin(BACKLIGHT_CONTROL_PIN);
     gpio_set_direction(BACKLIGHT_CONTROL_PIN, GPIO_MODE_OUTPUT);
     gpio_set_level(BACKLIGHT_CONTROL_PIN, 1); // Turn on backlight
-    
+
     // Create LVGL display
     lv_display_t *lvDisplay = lv_display_create(135, 240);
     lv_display_set_rotation(lvDisplay, LV_DISPLAY_ROTATION_90);
@@ -405,48 +268,53 @@ void lvgl_init_display(void)
     const esp_lcd_panel_io_callbacks_t cbs = {
         .on_color_trans_done = notify_lvgl_flush_ready,
     };
-    esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, lvDisplay);
+    ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, lvDisplay));
+}
+
+// ===================== UI Clock via LVGL timer =====================
+static lv_timer_t *ui_clock_timer = NULL;
+
+static void ui_clock_cb(lv_timer_t *t) {
+    (void)t;
+    // update counters
+    timer_ss++;
+    if (timer_ss == 60) { timer_ss = 0; timer_mm++; }
+    if (timer_mm == 60) { timer_mm = 0; timer_hh++; }
+    if (timer_hh == 99) { timer_hh = 0; }
+
+    // update label (safe: LVGL task)
+    char text[10];
+    if (timer_ss & 1)  snprintf(text, sizeof(text), "%02u %02u", timer_hh, timer_mm);
+    else               snprintf(text, sizeof(text), "%02u:%02u", timer_hh, timer_mm);
+    lv_subject_copy_string(&opTime, text);
 }
 
 void app_main(void)
 {
     // Initialize LVGL
     lv_init();
-    
-    // start a 1ms periodic esp_timer to advance LVGL tick
+
+    // 1ms periodic esp_timer to advance LVGL tick (OK to call from timer)
     esp_timer_create_args_t periodic_timer_args = {
         .callback = &lv_tick_cb,
         .arg = NULL,
         .name = "lv_tick"
     };
-    esp_timer_handle_t lv_tick_timer;
-    esp_timer_create(&periodic_timer_args, &lv_tick_timer);
-    esp_timer_start_periodic(lv_tick_timer, 1000); // 1000 us = 1 ms
-
-
-    // start a 1ms periodic esp_timer to advance LVGL tick
-    esp_timer_create_args_t periodic_timer_clock_args = {
-        .callback = &timer_count,
-        .arg = NULL,
-        .name = "timer_count"
-    };
-    
-    esp_timer_create(&periodic_timer_clock_args, &lv_clock_timer);
-    
+    ESP_ERROR_CHECK(esp_timer_create(&periodic_timer_args, &lv_tick_timer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(lv_tick_timer, 1000)); // 1000 us = 1 ms
 
     lvgl_init_display();
 
     ui_init(NULL);
-    // lv_obj_t * demo_screen;
-    // demo_screen = demo_create();
-
-    lv_obj_t * home_screen;
-    home_screen = home_create();
-
+    lv_obj_t * home_screen = home_create();
     lv_scr_load(home_screen);
 
+    // Create the LVGL clock timer (start paused; we control via button)
+    ui_clock_timer = lv_timer_create(ui_clock_cb, 1000, NULL);
+    lv_timer_pause(ui_clock_timer);
+
     // GPIO setup
-    gpio_install_isr_service(0);
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));
     for (int i = 0; i < NUM_BUTTONS; i++) {
         button_t *btn = &buttons[i];
 
@@ -457,51 +325,110 @@ void app_main(void)
             .pull_up_en = GPIO_PULLUP_ENABLE,    // active-low buttons
             .pull_down_en = GPIO_PULLDOWN_DISABLE
         };
-        gpio_config(&io);
+        ESP_ERROR_CHECK(gpio_config(&io));
 
         // Initialize stable state from hardware
         btn->stable_level = gpio_get_level(btn->gpio);     // 0 pressed, 1 released
         btn->pressed = (btn->stable_level == 0);
+        btn->pending = false;
+        btn->debounce_deadline = 0;
 
         // Attach ISR
-        gpio_isr_handler_add(btn->gpio, button_isr_handler, btn);
+        ESP_ERROR_CHECK(gpio_isr_handler_add(btn->gpio, button_isr_handler, btn));
     }
 
-    //Event queue
+    // Event queue
     event_queue = xQueueCreate(32, sizeof(event_msg_t));
 
-    //Single periodic timer
+    // Single periodic software timer for scanning
     scan_timer = xTimerCreate("btn_scan",
                               pdMS_TO_TICKS(TIMER_PERIOD_MS),
                               pdTRUE, NULL,
                               scan_timer_callback);
     xTimerStart(scan_timer, 0);
 
-    //Consumer
-    xTaskCreate(vConsoleTask, "ConsoleTask", 4048, NULL, 5, NULL);
+    // State used in button handler
+    bool opStat = false;
+    bool chan1 = true;
+    bool chan2 = true;
 
-
-    // xTaskCreatePinnedToCore(spin_task, "pinned_task0_core0", 4096, (void*)task_id0, TASK_PRIO_3, NULL, CORE0);
-    // static uint64_t last_change = 0;
-    // uint8_t flip = 0;
-    while (1) 
+    // ========= Main UI task loop (sole owner of LVGL calls) =========
+    while (1)
     {
-        // uint64_t now = esp_timer_get_time();
-        // if ((now - last_change) > 1000000) { // 1 second interval
-        //     if(flip)
-        //     {
-        //         flip = 0;
-        //         lv_subject_set_int(&btn_center, 0);
-        //     }else{
-        //         flip = 1;
-        //         lv_subject_set_int(&btn_center, 1);
-        //     }
-        //     last_change = now;
-        // }
+        // Drain button events here (replaces vConsoleTask)
+        event_msg_t msg;
+        while (xQueueReceive(event_queue, &msg, 0) == pdTRUE) {
+            if (msg.event == BUTTON_EVENT_SHORT) {
+                switch (msg.btn_id) {
+                    case 40: { // "RIGHT_BOTTOM"
+                        opStat = !opStat;
+                        if (opStat) {
+                            lv_subject_copy_string(&command, "STOP");
+                            lv_timer_resume(ui_clock_timer);
+                        } else {
+                            lv_subject_copy_string(&command, "START");
+                            timer_ss = timer_mm = timer_hh = 0;
+                            lv_subject_copy_string(&opTime, "00:00");
+                            lv_timer_pause(ui_clock_timer);
+                        }
+                    } break;
 
-        lv_timer_handler(); // Handle LVGL tasks
+                    case 41: { // "RIGHT_TOP"
+                        int t = lv_subject_get_int(&targetTemp);
+                        t++;
+                        if (t > 60) t = 60;
+                        lv_subject_set_int(&targetTemp, t);
+                    } break;
+
+                    case 42: { // "RIGHT_CENTER"
+                        int t = lv_subject_get_int(&targetTemp);
+                        t--;
+                        if (t < 0) t = 0;
+                        lv_subject_set_int(&targetTemp, t);
+                    } break;
+
+                    case 45: { // "LEFT_BOTTOM"
+                        int t = lv_subject_get_int(&pageSelect);
+                        t++;
+                        if (t > 3) t = 0;
+                        lv_subject_set_int(&pageSelect, t);
+                    } break;
+
+                    case 47: { // "LEFT_CENTER"
+                        chan2 = !chan2;
+                        lv_subject_copy_string(&ch2_active, chan2 ? "•" : " ");
+                    } break;
+
+                    case 48: { // "LEFT_TOP"
+                        chan1 = !chan1;
+                        lv_subject_copy_string(&ch1_active, chan1 ? "•" : " ");
+                    } break;
+                }
+            } else { // BUTTON_EVENT_REPEAT
+                switch (msg.btn_id) {
+                    case 41: { // "RIGHT_TOP"
+                        int t = lv_subject_get_int(&targetTemp);
+                        t++;
+                        if (t > 60) t = 60;
+                        lv_subject_set_int(&targetTemp, t);
+                    } break;
+                    case 42: { // "RIGHT_CENTER"
+                        int t = lv_subject_get_int(&targetTemp);
+                        t--;
+                        if (t < 0) t = 0;
+                        lv_subject_set_int(&targetTemp, t);
+                    } break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        // Run LVGL
+        lv_timer_handler();
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 
-    esp_restart();
+    // Not reached
+    // esp_restart();
 }
