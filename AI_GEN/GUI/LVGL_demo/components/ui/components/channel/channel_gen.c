@@ -91,7 +91,7 @@ lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t 
 
     LV_TRACE_OBJ_CREATE("finished");
 
-    lv_obj_set_name(lv_image_0, "channel_#");
+    // lv_obj_set_name(lv_image_0, "channel_#");
 
     return lv_image_0;
 }

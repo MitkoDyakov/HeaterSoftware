@@ -22,14 +22,21 @@
             </row>
           </column>
           <column width="141" height="100%" style_bg_opa="0"  style_pad_left="2">
-            <row width="141" height="83">
-               <!-- set target temp component here -->
-               <target_tmp style_pad_all="0" target_temp="targetTemp"></target_tmp>
-            </row>
-            <row width="141" height="39" style_margin_top="4">
-               <!-- start/stop component here  -->
-               <control style_pad_all="0" time="opTime" command="command"></control>
-            </row>
+            <lv_tabview tab_bar_position="bottom" style_height="200" style_pad_all="0" style_bg_opa="0" scrollable="false">
+              <lv_tabview-tab text="•" style_pad_all="0" style_bg_opa="0" scrollable="false" >
+                 <column width="141" height="100%" style_bg_opa="0" style_pad_all="0">
+                    <row width="141" height="83">
+                      <target_tmp style_pad_all="0" target_temp="targetTemp"></target_tmp>
+                    </row>
+                    <row width="141" height="39" style_margin_top="4">
+                      <control style_pad_all="0" time="opTime" command="command"></control>
+                    </row>
+                  </column>
+              </lv_tabview-tab>
+              <lv_tabview-tab text="•"></lv_tabview-tab>
+              <lv_tabview-tab text="•"></lv_tabview-tab>
+              <lv_tabview-tab text="•"></lv_tabview-tab>
+            </lv_tabview>
           </column>
         </row>
     </view>

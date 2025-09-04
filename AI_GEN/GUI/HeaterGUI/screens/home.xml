@@ -1,6 +1,7 @@
 <screen permanent="true">
     <styles>
         <style name="main" bg_color="#backgraund"/>
+        <style name="nopad" margin_all="0" pad_all="0"/> 
     </styles>
     <view width="240" height="135">
         <style name="main"/>
@@ -21,15 +22,37 @@
               <page style_pad_all="0"></page>
             </row>
           </column>
-          <column width="141" height="100%" style_bg_opa="0"  style_pad_left="2">
-            <row width="141" height="83">
-               <!-- set target temp component here -->
-               <target_tmp style_pad_all="0" target_temp="targetTemp"></target_tmp>
-            </row>
-            <row width="141" height="39" style_margin_top="4">
-               <!-- start/stop component here  -->
-               <control style_pad_all="0" time="opTime" command="command"></control>
-            </row>
+          <column width="141" height="126" style_bg_opa="0" style_margin_all="0" style_pad_left="2">
+            <lv_tabview tab_bar_position="bottom" width="141" height="126" scrollable="false" style_bg_opa="0">
+              <lv_tabview-tab_bar height="0" />
+              <lv_tabview-tab text="1" scrollable="false">
+                <style name="nopad"/>
+                  <column scrollable="false"  width="141" height="126" style_bg_opa="0">
+                    <row width="141" height="83">
+                     <target_tmp target_temp="targetTemp"/>
+                    </row>
+                    <row width="141" height="39" style_margin_top="4">
+                      <control time="opTime" command="command" />
+                    </row>
+                  </column>
+              </lv_tabview-tab>
+
+              <lv_tabview-tab text="2" scrollable="false">
+                <style name="nopad"/>
+                <info dummy="Page 2"></info>
+              </lv_tabview-tab>
+
+              <lv_tabview-tab text="3" scrollable="false">
+                <style name="nopad"/>
+                <info dummy="Page 3"></info>
+              </lv_tabview-tab>
+
+              <lv_tabview-tab text="4" scrollable="false">
+                <style name="nopad"/>
+                <info dummy="Page 4"></info>
+              </lv_tabview-tab>
+
+            </lv_tabview>
           </column>
         </row>
     </view>

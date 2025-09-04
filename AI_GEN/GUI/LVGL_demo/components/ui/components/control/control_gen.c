@@ -77,7 +77,7 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
 
     LV_TRACE_OBJ_CREATE("finished");
 
-    lv_obj_set_name(lv_obj_0, "control_#");
+    // lv_obj_set_name(lv_obj_0, "control_#");
 
     return lv_obj_0;
 }

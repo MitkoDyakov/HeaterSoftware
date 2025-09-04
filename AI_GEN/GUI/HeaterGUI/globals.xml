@@ -54,6 +54,7 @@
         <data name="page_bg" src_path="images/page_bg.png"  color_format="rgb565a8"/>
         <data name="start_bg" src_path="images/start_bg.png" color_format="rgb565a8"/>
         <data name="target_bg" src_path="images/target_bg.png"  color_format="rgb565a8"/>
+        <data name="bg_page" src_path="images/bg_page.png"  color_format="rgb565a8"/>
     </images>
 
     <fonts>

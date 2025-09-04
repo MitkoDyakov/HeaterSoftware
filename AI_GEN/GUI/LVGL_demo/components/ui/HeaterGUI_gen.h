@@ -81,6 +81,7 @@ extern const void * channel_bg;
 extern const void * page_bg;
 extern const void * start_bg;
 extern const void * target_bg;
+extern const void * bg_page;
 
 /*----------------
  * Subjects
@@ -129,6 +130,7 @@ void HeaterGUI_init_gen(const char * asset_path);
 #include "components/channel/channel_gen.h"
 #include "components/column/column_gen.h"
 #include "components/control/control_gen.h"
+#include "components/info/info_gen.h"
 #include "components/page/page_gen.h"
 #include "components/row/row_gen.h"
 #include "components/target_tmp/target_tmp_gen.h"
