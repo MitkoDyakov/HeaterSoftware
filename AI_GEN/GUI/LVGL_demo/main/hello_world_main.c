@@ -29,6 +29,45 @@
 #include "home_gen.h"
 #include "HeaterGUI_gen.h"
 
+extern lv_obj_t *column_1;
+
+static void load_page(uint8_t page_id) {
+    // Clear old content
+    lv_obj_clean(column_1);
+
+    switch(page_id) {
+    case 0: {
+
+        lv_obj_t * row_4 = row_create(column_1);
+        lv_obj_set_width(row_4, 141);
+        lv_obj_set_height(row_4, 83);
+
+        lv_obj_t * target_tmp_0 = target_tmp_create(row_4, &targetTemp);
+        lv_obj_set_style_pad_all(target_tmp_0, 0, 0);
+
+        lv_obj_t * row_5 = row_create(column_1);
+        lv_obj_set_width(row_5, 141);
+        lv_obj_set_height(row_5, 39);
+        lv_obj_set_style_margin_top(row_5, 4, 0);
+
+        lv_obj_t * control_0 = control_create(row_5, &command, &opTime);
+        lv_obj_set_style_pad_all(control_0, 0, 0);
+
+    } break;
+
+    case 1: {
+        lv_obj_t * info_0 = info_create(column_1, "Page 2");
+    } break;
+
+    case 2: {
+        lv_obj_t * info_0 = info_create(column_1, "Page 3");
+    } break;
+
+    case 3: {
+        lv_obj_t * info_0 = info_create(column_1, "Page 4");
+    } break;
+    }
+}
 
 // patch -p1 < ../../lvgl_translation_fix_forward.patch
 const static char *TAG = "DISPLAY";
@@ -186,7 +225,7 @@ static void scan_timer_callback(TimerHandle_t t) {
 esp_lcd_panel_handle_t panel_handle = NULL; // Global panel handle
 static void *lvBuffer1;
 static void *lvBuffer2;
-#define draw_buffer_sz (240 * 10)          // Buffer for 10 rows
+#define draw_buffer_sz (IMAGE_WIDTH * IMAGE_HEIGHT * JPG_BPP)          // Buffer for 10 rows
 
 static void lv_tick_cb(void* arg) {
     (void)arg;
@@ -218,7 +257,7 @@ void lvgl_init_display(void)
         .miso_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = 240 * 10 * 2 + 8
+        .max_transfer_sz = draw_buffer_sz
     };
     ESP_ERROR_CHECK(spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
@@ -228,7 +267,7 @@ void lvgl_init_display(void)
     esp_lcd_panel_io_spi_config_t io_config = {
         .dc_gpio_num = PIN_NUM_DC,
         .cs_gpio_num = PIN_NUM_CS,
-        .pclk_hz = 40 * 1000 * 1000, // Use 40 MHz for stability
+        .pclk_hz = 80 * 1000 * 1000, // Use 40 MHz for stability
         .spi_mode = 0,
         .trans_queue_depth = 10,
         .lcd_cmd_bits = 8,
@@ -392,6 +431,7 @@ void app_main(void)
                         t++;
                         if (t > 3) t = 0;
                         lv_subject_set_int(&pageSelect, t);
+                        load_page(t);
                     } break;
 
                     case 47: { // "LEFT_CENTER"
@@ -426,7 +466,7 @@ void app_main(void)
 
         // Run LVGL
         lv_timer_handler();
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(5));
     }
 
     // Not reached

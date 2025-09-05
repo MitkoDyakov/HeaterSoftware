@@ -30,6 +30,7 @@
 /**********************
  *   GLOBAL FUNCTIONS
  **********************/
+lv_obj_t * column_1;
 
 lv_obj_t * home_create(void)
 {
@@ -92,7 +93,7 @@ lv_obj_t * home_create(void)
 
 
 
-    lv_obj_t * column_1 = column_create(row_0);
+    column_1 = column_create(row_0);
     lv_obj_set_width(column_1, 141);
     lv_obj_set_height(column_1, lv_pct(100));
     lv_obj_set_style_bg_opa(column_1, 0, 0);

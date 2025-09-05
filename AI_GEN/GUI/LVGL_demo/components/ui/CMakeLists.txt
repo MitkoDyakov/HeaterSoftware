@@ -9,12 +9,14 @@ idf_component_register(
     "images/page_bg_data.c"
     "images/start_bg_data.c"
     "images/target_bg_data.c"
+    "images/info_bg_data.c"
     "fonts/LaugeGothic_mode_ttf_data.c"
     "components/channel/channel_gen.c"
     "components/column/column_gen.c"
     "components/control/control_gen.c"
     "components/page/page_gen.c"
     "components/row/row_gen.c"
+    "components/info/info_gen.c"
     "components/target_tmp/target_tmp_gen.c"
   INCLUDE_DIRS 
     "." 
@@ -26,6 +28,7 @@ idf_component_register(
     "components/control/"
     "components/page/"
     "components/row/"
+    "components/info/"
     "components/target_tmp/"
   REQUIRES lvgl
 )
