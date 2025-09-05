@@ -171,8 +171,6 @@ static void scan_timer_callback(TimerHandle_t t) {
 
 // ===================== Display & LVGL =====================
 
-extern lv_obj_t * lv_tabview_0;
-
 #define PIN_NUM_MOSI 37
 #define PIN_NUM_CLK  36
 #define PIN_NUM_CS   35
@@ -394,7 +392,6 @@ void app_main(void)
                         t++;
                         if (t > 3) t = 0;
                         lv_subject_set_int(&pageSelect, t);
-                        lv_tabview_set_active(lv_tabview_0, t, LV_ANIM_OFF);
                     } break;
 
                     case 47: { // "LEFT_CENTER"

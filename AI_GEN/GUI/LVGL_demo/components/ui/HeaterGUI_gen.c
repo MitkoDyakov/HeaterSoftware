@@ -75,8 +75,6 @@ const void * start_bg;
 extern const void * start_bg_data;
 const void * target_bg;
 extern const void * target_bg_data;
-const void * bg_page;
-extern const void * bg_page_data;
 
 /*----------------
  * Subjects
@@ -151,7 +149,6 @@ void HeaterGUI_init_gen(const char * asset_path)
     page_bg = &page_bg_data;
     start_bg = &start_bg_data;
     target_bg = &target_bg_data;
-    bg_page = &bg_page_data;
 
 
     /*----------------
@@ -250,7 +247,6 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_xml_register_image(NULL, "page_bg", page_bg);
     lv_xml_register_image(NULL, "start_bg", start_bg);
     lv_xml_register_image(NULL, "target_bg", target_bg);
-    lv_xml_register_image(NULL, "bg_page", bg_page);
 #endif
 
 #if LV_USE_XML == 0

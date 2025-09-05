@@ -100,7 +100,7 @@ lv_obj_t * page_create(lv_obj_t * parent, int32_t active_page)
 
     LV_TRACE_OBJ_CREATE("finished");
 
-    // lv_obj_set_name(lv_obj_0, "page_#");
+    lv_obj_set_name(lv_obj_0, "page_#");
 
     return lv_obj_0;
 }
