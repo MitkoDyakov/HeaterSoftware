@@ -19,7 +19,6 @@ extern "C" {
 /*********************
  *      DEFINES
  *********************/
-void lv_obj_set_name(lv_obj_t *obj, const char *name);
 
 /**********************
  *      TYPEDEFS

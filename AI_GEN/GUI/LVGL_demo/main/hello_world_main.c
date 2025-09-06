@@ -29,6 +29,8 @@
 #include "home_gen.h"
 #include "HeaterGUI_gen.h"
 
+//patch -p1 < ../../lvgl_translation_fix_forward.patch
+
 extern lv_obj_t *column_1;
 
 static void load_page(uint8_t page_id) {
@@ -71,13 +73,6 @@ static void load_page(uint8_t page_id) {
 
 // patch -p1 < ../../lvgl_translation_fix_forward.patch
 const static char *TAG = "DISPLAY";
-
-__attribute__((weak)) void lv_obj_set_name(lv_obj_t *obj, const char *name)
-{
-    LV_UNUSED(obj);
-    LV_UNUSED(name);
-    // No-op: your UI generator can call this safely; nothing happens.
-}
 
 // ---------- Tuning ----------
 #define DEBOUNCE_MS             30
@@ -234,7 +229,6 @@ static void lv_tick_cb(void* arg) {
 
 void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
 {
-    lv_draw_sw_rgb565_swap(px_map, (area->x2 - area->x1 + 1) * (area->y2 - area->y1 + 1));
     esp_lcd_panel_draw_bitmap(panel_handle, area->x1, area->y1, area->x2 + 1, area->y2 + 1, px_map);
 }
 
@@ -295,14 +289,14 @@ void lvgl_init_display(void)
     // Initialize backlight
     gpio_reset_pin(BACKLIGHT_CONTROL_PIN);
     gpio_set_direction(BACKLIGHT_CONTROL_PIN, GPIO_MODE_OUTPUT);
-    gpio_set_level(BACKLIGHT_CONTROL_PIN, 1); // Turn on backlight
+    gpio_set_level(BACKLIGHT_CONTROL_PIN, 0); // Turn on backlight
 
     // Create LVGL display
     lv_display_t *lvDisplay = lv_display_create(135, 240);
     lv_display_set_rotation(lvDisplay, LV_DISPLAY_ROTATION_90);
     lv_display_set_color_format(lvDisplay, LV_COLOR_FORMAT_RGB565); // Use RGB565
     lv_display_set_flush_cb(lvDisplay, lvgl_flush_cb);
-    lv_display_set_buffers(lvDisplay, (void *)lvBuffer1, (void *)lvBuffer2, draw_buffer_sz, LV_DISPLAY_RENDER_MODE_PARTIAL);
+    lv_display_set_buffers(lvDisplay, (void *)lvBuffer1, (void *)lvBuffer2, draw_buffer_sz, LV_DISPLAY_RENDER_MODE_FULL);
 
     const esp_lcd_panel_io_callbacks_t cbs = {
         .on_color_trans_done = notify_lvgl_flush_ready,
