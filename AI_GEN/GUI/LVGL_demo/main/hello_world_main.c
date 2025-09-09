@@ -30,6 +30,7 @@
 #include "HeaterGUI_gen.h"
 
 //patch -p1 < ../../lvgl_translation_fix_forward.patch
+//Copilot Chat: Open in Editor Tab 
 
 extern lv_obj_t *column_1;
 
