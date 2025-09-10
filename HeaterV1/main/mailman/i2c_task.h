@@ -27,7 +27,7 @@ typedef struct {
     i2c_msg_type_t type;
     union {
         struct { // For I2C_MSG_PD_SET_PDO
-            uint8_t set_voltage; // 0=5V, 1=9V, 2=15V, 3=20V
+            uint8_t set_voltage; // Requested fixed voltage in V: 5, 9, 15, or 20
         } pd_set;
         struct { // For I2C_MSG_ADC_READ_CHAN
             uint8_t channel; // 1 or 2

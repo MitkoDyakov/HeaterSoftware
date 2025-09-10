@@ -1,0 +1,22 @@
+#ifndef __FIREMAN_H__
+#define __FIREMAN_H__
+
+#include <stdbool.h>
+#include <stdint.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+#include "freertos/task.h"
+
+// Start background Fireman task (temperature polling + PID). Provide I2C request queue and display/mock queue.
+bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue);
+
+// Enable/disable heaters independently. If both disabled PID loop idles.
+void fireman_set_heater1_enabled(bool en);
+void fireman_set_heater2_enabled(bool en);
+
+// Set target temperature(s) in deg C
+void fireman_set_setpoint1(int setpoint_c);
+void fireman_set_setpoint2(int setpoint_c);
+void fireman_set_setpoints(int sp1_c, int sp2_c);
+
+#endif
