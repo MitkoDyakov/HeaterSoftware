@@ -8,17 +8,15 @@
 
 #include "ap33772s.h"
 #include "ads7142.h"
+#include "TMP110.h"
 
 #define I2C_MASTER_PORT      0
 #define I2C_MASTER_FREQ_HZ   400000
 
-// Example addresses, replace with your actual device addresses
-#define ADS7142_ADDR        0x48
-#define AP33772S_ADDR       0x50
-
 // Device handles for I2C devices (new driver API)
 static i2c_master_dev_handle_t ads7142_handle = NULL;
 static i2c_master_dev_handle_t ap33772s_handle = NULL;
+static i2c_master_dev_handle_t TMP110_handle = NULL;
 
 // Removed PD_GET_PDOS: discovery/config happens at startup per design
 
@@ -46,6 +44,12 @@ static void handle_adc_read_single_ch(i2c_msg_t *msg) {
      xQueueSend(msg->response_queue, &result, 0);
 }
 
+static void read_ambient_temp(i2c_msg_t *msg) {
+    ambient_temp_result_t temp = {0};
+    TMP75_getTemp(&temp.ambientTemp);
+    xQueueSend(msg->response_queue, &temp, 0);
+}
+
 static void i2c_task(void *pvParameters) {
     QueueHandle_t queue = (QueueHandle_t)pvParameters;
     i2c_msg_t msg;
@@ -65,19 +69,27 @@ static void i2c_task(void *pvParameters) {
     i2c_device_config_t ads7142_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = ADS7142_ADDRESS,
-        .scl_speed_hz = 400000,
+        .scl_speed_hz = I2C_MASTER_FREQ_HZ,
     };
     ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &ads7142_cfg, &ads7142_handle));
 
     i2c_device_config_t ap33772s_cfg = {
         .dev_addr_length = I2C_ADDR_BIT_LEN_7,
         .device_address = AP33772S_ADDRESS,
-        .scl_speed_hz = 400000,
+        .scl_speed_hz = I2C_MASTER_FREQ_HZ,
     };
     ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &ap33772s_cfg, &ap33772s_handle));
 
-    AP33772S_setup(ads7142_handle);
-    ADS7142_setup(ap33772s_handle);
+    i2c_device_config_t TMP110_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = TMP110_ADDRESS,
+        .scl_speed_hz = I2C_MASTER_FREQ_HZ,
+    };
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &TMP110_cfg, &TMP110_handle));
+
+    AP33772S_setup(ap33772s_handle);
+    ADS7142_setup(ads7142_handle);
+    TMP110_setup(TMP110_handle);
 
     // --- Main loop: handle runtime requests ---
     while (1) {
@@ -91,6 +103,9 @@ static void i2c_task(void *pvParameters) {
                     break;
                 case I2C_MSG_ADC_READ_BOTH:
                     handle_adc_read(&msg);
+                    break;
+                case I2C_MSG_READ_AMBIENT_TEMP:
+                    read_ambient_temp(&msg);
                     break;
                 default:
                     break;

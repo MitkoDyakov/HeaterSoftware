@@ -12,10 +12,15 @@ typedef struct {
     double chan2;
 } adc_result_t;
 
+typedef struct {
+    float ambientTemp;
+} ambient_temp_result_t;
+
 typedef enum {
     I2C_MSG_PD_SET_PDO,     // Set PDO (voltage/current) on PD controller
     I2C_MSG_ADC_READ_SINGLE_CH,  // Read ADC channel (chan1 or chan2)
     I2C_MSG_ADC_READ_BOTH,  // Read both ADC channels
+    I2C_MSG_READ_AMBIENT_TEMP,  // Read ambient temperature
 } i2c_msg_type_t;
 
 typedef struct {

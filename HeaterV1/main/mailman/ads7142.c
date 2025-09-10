@@ -6,6 +6,8 @@
 #include "driver/gpio.h"
 #include "math.h"
 #include "pinout.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 
 #define VALUE_PER_BIT             (0.00005035477)
 #define ADS7142_I2C_TIMEOUT_MS    (50)
@@ -15,11 +17,68 @@ double calculate_temperature_celsius(double Rntc);
 
 i2c_master_dev_handle_t ADCDevice;
 
+// Signal when ADS7142 RDY pin goes low (conversion/calibration complete)
+static SemaphoreHandle_t s_adc_rdy_sem = NULL;
+static bool s_adc_isr_installed = false;
+
+static void IRAM_ATTR adc_rdy_isr(void *arg)
+{
+    BaseType_t hp_task_woken = pdFALSE;
+    if (s_adc_rdy_sem) {
+        xSemaphoreGiveFromISR(s_adc_rdy_sem, &hp_task_woken);
+    }
+
+    if (hp_task_woken) {
+        portYIELD_FROM_ISR();
+    }
+}
+
+// Wait for RDY to go low once, enabling the GPIO interrupt only for the wait window
+static inline void adc_wait_rdy_low(uint32_t timeout_ms)
+{
+    configASSERT(s_adc_rdy_sem != NULL);
+    // Flush any pending give (binary semaphore: single take is enough)
+    (void)xSemaphoreTake(s_adc_rdy_sem, 0);
+    if (gpio_get_level(ADC_RDY) != 0) {
+        gpio_intr_enable(ADC_RDY);
+        (void)xSemaphoreTake(s_adc_rdy_sem, pdMS_TO_TICKS(timeout_ms));
+        gpio_intr_disable(ADC_RDY);
+    }
+}
+
 bool ADS7142_setup(i2c_master_dev_handle_t devHandler)
 {
     ADCDevice = devHandler;
 
     uint8_t cmd[3] = {0x00};
+
+    // Create semaphore and configure RDY pin interrupt once
+    if (s_adc_rdy_sem == NULL) {
+        s_adc_rdy_sem = xSemaphoreCreateBinary();
+    }
+
+    gpio_config_t io_conf = {
+        .pin_bit_mask = 1ULL << ADC_RDY,
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_DISABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_NEGEDGE,
+    };
+
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
+
+    if (!s_adc_isr_installed) {
+        esp_err_t isr_ret = gpio_install_isr_service(0);
+        if (isr_ret == ESP_OK || isr_ret == ESP_ERR_INVALID_STATE) {
+            // ESP_ERR_INVALID_STATE means service already installed
+            s_adc_isr_installed = true;
+        } else {
+            ESP_ERROR_CHECK(isr_ret);
+        }
+    ESP_ERROR_CHECK(gpio_isr_handler_add(ADC_RDY, adc_rdy_isr, NULL));
+    // Keep disabled until explicitly waiting
+    gpio_intr_disable(ADC_RDY);
+    }
 
     //Abort the present sequence
     cmd[0] = SINGLE_REG_WRITE;
@@ -33,7 +92,8 @@ bool ADS7142_setup(i2c_master_dev_handle_t devHandler)
     cmd[2] = ADS7142_VAL_TRIG_OFFCAL;
     ESP_ERROR_CHECK(i2c_master_transmit(ADCDevice, cmd, 3, ADS7142_I2C_TIMEOUT_MS));
 
-    while(gpio_get_level(ADC_RDY));
+    // Wait for calibration done: RDY goes low (interrupt enabled only during wait)
+    adc_wait_rdy_low(ADS7142_I2C_TIMEOUT_MS);
 
     //end of calibration
 
@@ -82,7 +142,7 @@ bool ADS7142_setup(i2c_master_dev_handle_t devHandler)
     cmd[0] = SINGLE_REG_WRITE;
     cmd[1] = ADS7142_REG_OSC_SEL;
     cmd[2] = ADS7142_VAL_OSC_SEL_HSZ_HSO;
-    ESP_ERROR_CHECK(i2c_master_transmit(ADCDevice, cmd, 3, -1));
+    ESP_ERROR_CHECK(i2c_master_transmit(ADCDevice, cmd, 3, ADS7142_I2C_TIMEOUT_MS));
 
     //   //Confirm the oscillator selection
     //   uint8_t oscselconfig;
@@ -95,7 +155,7 @@ bool ADS7142_setup(i2c_master_dev_handle_t devHandler)
     cmd[0] = SINGLE_REG_WRITE;
     cmd[1] = ADS7142_REG_nCLK_SEL;
     cmd[2] = 21;
-    ESP_ERROR_CHECK(i2c_master_transmit(ADCDevice, cmd, 3, -1));
+    ESP_ERROR_CHECK(i2c_master_transmit(ADCDevice, cmd, 3, ADS7142_I2C_TIMEOUT_MS));
 
     //   //Confirm the nCLK selection
     //   uint8_t nCLKselconfig;
@@ -108,7 +168,7 @@ bool ADS7142_setup(i2c_master_dev_handle_t devHandler)
     cmd[0] = SINGLE_REG_WRITE;
     cmd[1] = ADS7142_REG_ACC_EN;
     cmd[2] = ADS7142_VAL_ACC_EN;
-    ESP_ERROR_CHECK(i2c_master_transmit(ADCDevice, cmd, 3, -1));
+    ESP_ERROR_CHECK(i2c_master_transmit(ADCDevice, cmd, 3, ADS7142_I2C_TIMEOUT_MS));
 
 
     return true;
@@ -126,8 +186,8 @@ bool getTemperature(double *chan0, double *chan1)
     cmd[2] = ADS7142_VAL_START_SEQUENCE;
     ESP_ERROR_CHECK(i2c_master_transmit(ADCDevice, cmd, 3, ADS7142_I2C_TIMEOUT_MS));
 
-    // call count
-    while(gpio_get_level(ADC_RDY));
+    // Wait for conversion ready via semaphore (interrupt enabled only during wait)
+    adc_wait_rdy_low(ADS7142_I2C_TIMEOUT_MS);
 
     if(NULL != chan0)
     {
@@ -135,13 +195,13 @@ bool getTemperature(double *chan0, double *chan1)
         uint8_t accch0MSB = 0;
         cmd[0] = SINGLE_REG_READ;
         cmd[1] = ADS7142_REG_ACC_CH0_MSB;
-    i2c_master_transmit_receive(ADCDevice, cmd, 2, &accch0MSB, 1, ADS7142_I2C_TIMEOUT_MS);
+        i2c_master_transmit_receive(ADCDevice, cmd, 2, &accch0MSB, 1, ADS7142_I2C_TIMEOUT_MS);
 
         //Read the LSB of Ch0 Accumulated Data after 16 accumulations are complete
         uint8_t accch0LSB = 0;
         cmd[0] = SINGLE_REG_READ;
         cmd[1] = ADS7142_REG_ACC_CH0_LSB;
-    i2c_master_transmit_receive(ADCDevice, cmd, 2, &accch0LSB, 1, ADS7142_I2C_TIMEOUT_MS);
+        i2c_master_transmit_receive(ADCDevice, cmd, 2, &accch0LSB, 1, ADS7142_I2C_TIMEOUT_MS);
         
         uint16_t ch0 = ((uint16_t)accch0MSB << 8) | accch0LSB;
 
@@ -156,13 +216,13 @@ bool getTemperature(double *chan0, double *chan1)
         uint8_t accch1MSB = 0;
         cmd[0] = SINGLE_REG_READ;
         cmd[1] = ADS7142_REG_ACC_CH1_MSB;
-    i2c_master_transmit_receive(ADCDevice, cmd, 2, &accch1MSB, 1, ADS7142_I2C_TIMEOUT_MS);
+        i2c_master_transmit_receive(ADCDevice, cmd, 2, &accch1MSB, 1, ADS7142_I2C_TIMEOUT_MS);
 
         //Read the LSB of Ch1 Accumulated Data after 16 accumulations are complete
         uint8_t accch1LSB = 0;
         cmd[0] = SINGLE_REG_READ;
         cmd[1] = ADS7142_REG_ACC_CH1_LSB;
-    i2c_master_transmit_receive(ADCDevice, cmd, 2, &accch1LSB, 1, ADS7142_I2C_TIMEOUT_MS);
+        i2c_master_transmit_receive(ADCDevice, cmd, 2, &accch1LSB, 1, ADS7142_I2C_TIMEOUT_MS);
 
         uint16_t ch1 = ((uint16_t)accch1MSB << 8) | accch1LSB;
 
