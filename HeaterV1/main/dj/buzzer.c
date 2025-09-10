@@ -105,7 +105,7 @@ static esp_err_t buzzer_start_oneshot_ms(uint32_t ms) {
     return ESP_OK;
 }
 
-esp_err_t buzzer_short_beep(void) { return buzzer_start_oneshot_ms(250); }
+esp_err_t buzzer_short_beep(void) { return buzzer_start_oneshot_ms(150); }
 
 esp_err_t buzzer_long_beep(void) { return buzzer_start_oneshot_ms(1500); }
 
