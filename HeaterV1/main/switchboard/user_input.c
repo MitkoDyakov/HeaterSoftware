@@ -93,7 +93,7 @@ void inputdetect_setup(QueueHandle_t external_queue) {
     event_queue = external_queue;
 
     // GPIO setup (allow already-installed state)
-    esp_err_t err = gpio_install_isr_service(0);
+    gpio_install_isr_service(0);
 
     for (int i = 0; i < NUM_BUTTONS; i++) {
         button_t *btn = &buttons[i];

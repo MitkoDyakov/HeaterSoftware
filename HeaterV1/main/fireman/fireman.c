@@ -12,9 +12,7 @@
 #include "fireman.h"
 
 #define BOARD_MAX_TEMPERATURE_C            60.0f  /* °C – shut off above this */
-
 #define SAMPLING_PERIOD_MILLISECONDS       500     /* 2 Hz control loop       */
-
 #define PROPORTIONAL_GAIN                  2.0f
 #define INTEGRAL_GAIN                      0.03f  /* 1/s */
 #define DERIVATIVE_GAIN                    4.0f   /* s   */
@@ -69,6 +67,8 @@ static volatile bool heater2_enabled = false;  /* Cross-task flag */
 /* PD management: track current fixed voltage (5,9,15,20). PoR default is 5V */
 static int current_pd_voltage = 5;
 static bool prev_any_enabled = false;        /* Detect transitions to/from active heating */
+
+static void fireman_task(void *arg);
 
 static inline float clamp_float(float value, float minimum, float maximum)
 {
