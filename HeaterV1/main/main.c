@@ -7,6 +7,7 @@
 
 #include "switchboard/user_input.h"
 #include "mailman/i2c_task.h"
+#include "dj/buzzer.h"
 
 static const char *TAG = "APP_MAIN";
 
@@ -19,8 +20,12 @@ static void button_consumer_task(void *arg) {
 	event_msg_t evt;
 	while (1) {
 		if (xQueueReceive(g_button_queue, &evt, portMAX_DELAY)) {
-			const char *etype = (evt.event == BUTTON_EVENT_SHORT) ? "SHORT" : "REPEAT";
-			ESP_LOGI(TAG, "Button GPIO %d -> %s", evt.btn_id, etype);
+			if (evt.event == BUTTON_EVENT_SHORT) {
+				buzzer_short_beep();
+				ESP_LOGI(TAG, "Button GPIO %d -> SHORT (beep)", evt.btn_id);
+			} else {
+				ESP_LOGI(TAG, "Button GPIO %d -> REPEAT", evt.btn_id);
+			}
 		}
 	}
 }
@@ -91,7 +96,7 @@ void app_main(void) {
 	// Create queues
 	g_button_queue = xQueueCreate(32, sizeof(event_msg_t));
 	g_i2c_queue    = xQueueCreate(10, sizeof(i2c_msg_t));
-    
+
 	if (!g_button_queue || !g_i2c_queue) {
 		ESP_LOGE(TAG, "Failed to create queues");
 		return;
@@ -100,6 +105,7 @@ void app_main(void) {
 	// Start subsystems
 	inputdetect_setup(g_button_queue);
 	i2c_task_start(g_i2c_queue);
+	buzzer_init();
 
 	// Start helper tasks
 	xTaskCreate(button_consumer_task, "btn_consumer", 2048, NULL, 5, NULL);
