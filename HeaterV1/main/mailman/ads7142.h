@@ -2,6 +2,9 @@
 #define ADS7142_H   
 
 #include <stdint.h>
+#include <stdbool.h>
+#include "driver/i2c_master.h"
+#include "freertos/FreeRTOS.h"
 
 #define ADS7142_ADDRESS                                             0x18
 
@@ -196,5 +199,7 @@
 #define ADS7142_REG_ALERT_LOW_FLAGS                                 0x0C         //Provides the read/write status of latched flags for low alert on both channels
 #define ADS7142_REG_ALERT_HIGH_FLAGS                                0x0E         //Provides the read/write status of latched flags for high alert on both channels
 
+bool getTemperature(double *chan0, double *chan1);
+bool ADS7142_setup(i2c_master_dev_handle_t devHandler);
 
 #endif // ADS7142_H

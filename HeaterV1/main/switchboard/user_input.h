@@ -12,6 +12,25 @@
 #define TIMER_PERIOD_MS         20   // timer tick (scan cadence)
 #define NUM_BUTTONS             6
 
+// ---------- Button state ----------
+typedef struct {
+    int        gpio;
+    const char *name;
+
+    // debounced stable level (active-low: 0=pressed, 1=released)
+    int        stable_level;
+    bool       pressed;
+
+    // debounce edge gating
+    bool       pending;              // ISR saw an edge
+    TickType_t debounce_deadline;    // when to re-sample
+
+    // repeat & short suppression
+    TickType_t press_start;
+    TickType_t last_repeat;
+    bool       any_repeat_since_press;
+} button_t;
+
 // ---------- Events ----------
 typedef enum {
     BUTTON_EVENT_SHORT,

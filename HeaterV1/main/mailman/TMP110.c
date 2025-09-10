@@ -1,15 +1,19 @@
+#include "TMP110.h"
+#include "driver/i2c_master.h"
+
+#define I2C_TOOL_TIMEOUT_VALUE_MS (50u)
 
 i2c_master_dev_handle_t tmpDevice;
 
-bool TMP75_setup(i2c_master_dev_handle_t device)
+bool TMP110_setup(i2c_master_dev_handle_t device)
 {
     tmpDevice = device;
     return true;
 }
 
-bool TMP75_getTemp(float *temp)
+bool TMP110_getTemp(float *temp)
 {
-    uint8_t reg_addr = TMP75_TEMP_REG;   // 0x00 for TMP110/TMP75
+    uint8_t reg_addr = TMP110_TEMP_REG;   // 0x00 for TMP110
     uint8_t rx_data[2] = {0};
     esp_err_t ret = i2c_master_transmit_receive(tmpDevice, &reg_addr, 1, rx_data, 2, I2C_TOOL_TIMEOUT_VALUE_MS);
 

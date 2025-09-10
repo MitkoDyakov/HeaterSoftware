@@ -2,12 +2,13 @@
 #define AP33772S_H
 
 #include <stdint.h>
+#include <stdbool.h>
+#include "driver/i2c_master.h"
 
 #define MAX_PDO_ENTRIES 13  // Define the maximum number of PDO entries you expect
 
 #define AP33772S_ADDRESS 0x52
 #define READ_BUFF_LENGTH 128
-#define WRITE_BUFF_LENGTH 6
 #define SRCPDO_LENGTH 28
 
 #define CMD_STATUS    0x01 //Reset to 0 after very Read
@@ -132,7 +133,7 @@ typedef struct {
 } RDO_DATA_T;
 
 
-bool AP33772S_setup(i2c_device_config_t *pdDevice);
+bool AP33772S_setup(i2c_master_dev_handle_t pdDevice);
 bool setFixPDO(uint8_t voltage);
 
 #endif // AP33772S_H

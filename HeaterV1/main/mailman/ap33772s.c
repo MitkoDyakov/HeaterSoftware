@@ -1,9 +1,9 @@
-#include "pdsetup.h"
 #include "AP33772S.h"
 #include "driver/i2c_master.h"
 #include <unistd.h>
-#include "esp_console.h"
-#include "linenoise/linenoise.h"
+
+void AP33772S_UpdatePdoList(void);
+void parsePDOlist();
 
 #define WRITE_BUFF_LENGTH         3
 #define I2C_TOOL_TIMEOUT_VALUE_MS (50u)
@@ -58,7 +58,7 @@ void parsePDOlist()
 {
     for (int i = 0; i < MAX_PDO_ENTRIES; i++) {
         if (SRC_SPRandEPRpdoArray[i].fixed.type == 0) { // Fixed Supply
-            uint32_t voltage = SRC_SPRandEPRpdoArray[i].fixed.voltage * 50;
+            uint32_t voltage = SRC_SPRandEPRpdoArray[i].fixed.voltage_max * 50;
 
             switch (voltage) {
                 case 5000:

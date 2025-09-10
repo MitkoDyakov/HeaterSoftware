@@ -36,7 +36,7 @@ static void handle_adc_read_single_ch(i2c_msg_t *msg) {
     // Read ADC channel using DMA, send result to response queue
     adc_result_t result;
 
-    if(msg->data.adc_read.channel == 1){
+    if(msg->data.adc_read.channel== 1){
         getTemperature(&result.chan1, NULL);
     }else{
         getTemperature(NULL, &result.chan2);
@@ -46,7 +46,7 @@ static void handle_adc_read_single_ch(i2c_msg_t *msg) {
 
 static void read_ambient_temp(i2c_msg_t *msg) {
     ambient_temp_result_t temp = {0};
-    TMP75_getTemp(&temp.ambientTemp);
+    TMP110_getTemp(&temp.ambientTemp);
     xQueueSend(msg->response_queue, &temp, 0);
 }
 

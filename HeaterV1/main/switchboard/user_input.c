@@ -6,24 +6,8 @@
 #include "freertos/timers.h"
 #include "esp_log.h"
 
-// ---------- Button state ----------
-typedef struct {
-    int        gpio;
-    const char *name;
-
-    // debounced stable level (active-low: 0=pressed, 1=released)
-    int        stable_level;
-    bool       pressed;
-
-    // debounce edge gating
-    bool       pending;              // ISR saw an edge
-    TickType_t debounce_deadline;    // when to re-sample
-
-    // repeat & short suppression
-    TickType_t press_start;
-    TickType_t last_repeat;
-    bool       any_repeat_since_press;
-} button_t;
+static QueueHandle_t event_queue;
+static TimerHandle_t scan_timer;
 
 // ---------- YOUR BUTTONS ----------
 static button_t buttons[NUM_BUTTONS] = {
@@ -34,9 +18,6 @@ static button_t buttons[NUM_BUTTONS] = {
     { .gpio = 47, .name = "LEFT_CENTER"},
     { .gpio = 48, .name = "LEFT_TOP"}
 };
-
-static QueueHandle_t event_queue;
-static TimerHandle_t scan_timer;
 
 // ---- tick helpers (wrap-safe) ----
 static inline bool tick_reached(TickType_t now, TickType_t deadline) {
@@ -108,8 +89,7 @@ static void scan_timer_callback(TimerHandle_t t) {
     }
 }
 
-void inputdetect_setup(QueueHandle_t external_queue)
-{
+void inputdetect_setup(QueueHandle_t external_queue) {
     event_queue = external_queue;
 
     // GPIO setup (allow already-installed state)

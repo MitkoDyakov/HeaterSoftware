@@ -30,7 +30,7 @@ typedef struct {
             uint8_t set_voltage; // 0=5V, 1=9V, 2=15V, 3=20V
         } pd_set;
         struct { // For I2C_MSG_ADC_READ_CHAN
-            adc_result_t channel; // 1 or 2
+            uint8_t channel; // 1 or 2
         } adc_read;
     } data;
     QueueHandle_t response_queue; // For sending result back

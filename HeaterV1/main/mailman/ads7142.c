@@ -72,9 +72,8 @@ bool ADS7142_setup(i2c_master_dev_handle_t devHandler)
         if (isr_ret == ESP_OK || isr_ret == ESP_ERR_INVALID_STATE) {
             // ESP_ERR_INVALID_STATE means service already installed
             s_adc_isr_installed = true;
-        } else {
-            ESP_ERROR_CHECK(isr_ret);
         }
+        
     ESP_ERROR_CHECK(gpio_isr_handler_add(ADC_RDY, adc_rdy_isr, NULL));
     // Keep disabled until explicitly waiting
     gpio_intr_disable(ADC_RDY);
