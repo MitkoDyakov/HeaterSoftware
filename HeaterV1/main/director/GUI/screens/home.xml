@@ -21,7 +21,7 @@
               <page style_pad_all="0"></page>
             </row>
           </column>
-          <column width="141" height="100%" style_bg_opa="0"  style_pad_left="2">
+          <column width="141" height="100%" style_bg_opa="0" name="page_container" style_pad_left="2">
             <row width="141" height="83">
                <!-- set target temp component here -->
                <target_tmp style_pad_all="0" target_temp="targetTemp"></target_tmp>

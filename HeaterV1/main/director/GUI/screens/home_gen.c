@@ -92,13 +92,14 @@ lv_obj_t * home_create(void)
 
 
 
-    lv_obj_t * column_1 = column_create(row_0);
-    lv_obj_set_width(column_1, 141);
-    lv_obj_set_height(column_1, lv_pct(100));
-    lv_obj_set_style_bg_opa(column_1, 0, 0);
-    lv_obj_set_style_pad_left(column_1, 2, 0);
+    lv_obj_t * page_container = column_create(row_0);
+    lv_obj_set_width(page_container, 141);
+    lv_obj_set_height(page_container, lv_pct(100));
+    lv_obj_set_style_bg_opa(page_container, 0, 0);
+    lv_obj_set_name(page_container, "page_container");
+    lv_obj_set_style_pad_left(page_container, 2, 0);
 
-    lv_obj_t * row_4 = row_create(column_1);
+    lv_obj_t * row_4 = row_create(page_container);
     lv_obj_set_width(row_4, 141);
     lv_obj_set_height(row_4, 83);
 
@@ -107,7 +108,7 @@ lv_obj_t * home_create(void)
 
 
 
-    lv_obj_t * row_5 = row_create(column_1);
+    lv_obj_t * row_5 = row_create(page_container);
     lv_obj_set_width(row_5, 141);
     lv_obj_set_height(row_5, 39);
     lv_obj_set_style_margin_top(row_5, 4, 0);

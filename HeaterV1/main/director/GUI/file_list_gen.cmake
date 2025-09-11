@@ -10,9 +10,9 @@ list(
   ${CMAKE_CURRENT_LIST_DIR}/components/target_tmp/target_tmp_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/demo_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/screens/home_gen.c
-  ${CMAKE_CURRENT_LIST_DIR}/HeaterGUI_gen.c
+  ${CMAKE_CURRENT_LIST_DIR}/GUI_gen.c
   ${CMAKE_CURRENT_LIST_DIR}/ui.c
-  ${CMAKE_CURRENT_LIST_DIR}/HeaterGUI.c
+  ${CMAKE_CURRENT_LIST_DIR}/GUI.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/LaugeGothic_mode_ttf_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/LaugeGothic_mode_ttf_data.c
   ${CMAKE_CURRENT_LIST_DIR}/fonts/LaugeGothic_mode_ttf_data.c

@@ -8,6 +8,7 @@
 #include "switchboard/user_input.h"
 #include "mailman/i2c_task.h"
 #include "composer/buzzer.h"
+#include "director/director.h"
 #include "wiseman/wiseman.h"
 
 static const char *TAG = "APP_MAIN";
@@ -20,19 +21,7 @@ static QueueHandle_t g_button_queue;
 static QueueHandle_t g_i2c_queue;
 
 // ---------------- Button event consumer ----------------
-static void button_consumer_task(void *arg) {
-	event_msg_t evt;
-	while (1) {
-		if (xQueueReceive(g_button_queue, &evt, portMAX_DELAY)) {
-			if (evt.event == BUTTON_EVENT_SHORT) {
-				buzzer_short_beep();
-				ESP_LOGI(TAG, "Button GPIO %d -> SHORT (beep)", evt.btn_id);
-			} else {
-				ESP_LOGI(TAG, "Button GPIO %d -> REPEAT", evt.btn_id);
-			}
-		}
-	}
-}
+// (Button events now consumed by director GUI task.)
 
 // Helper to send an I2C request and wait for a response of a given type.
 // Response queue is created per request to keep interface simple for test code.
@@ -114,7 +103,8 @@ void app_main(void) {
 	i2c_task_start(g_i2c_queue);
 	buzzer_init();
 
-	// Start helper tasks
-	xTaskCreate(button_consumer_task, "btn_consumer", 2048, NULL, 5, NULL);
-	xTaskCreate(i2c_test_task,       "i2c_test",     4096, NULL, 5, NULL);
+	// Start GUI director (consumes button events)
+	director_start(g_button_queue);
+	// Keep I2C test for now (optional)
+	// xTaskCreate(i2c_test_task, "i2c_test", 4096, NULL, 5, NULL);
 }
