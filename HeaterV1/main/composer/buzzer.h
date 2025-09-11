@@ -1,10 +1,10 @@
 #ifndef BUZZER_H
 #define BUZZER_H
 
+#include "driver/ledc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/timers.h"
-#include "driver/ledc.h"
 #include "esp_err.h"
 #include <stdbool.h>
 

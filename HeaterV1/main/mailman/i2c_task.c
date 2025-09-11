@@ -1,5 +1,5 @@
-#include "i2c_task.h"
 #include "driver/i2c_master.h"
+#include "i2c_task.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"

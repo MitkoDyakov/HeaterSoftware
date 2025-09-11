@@ -143,25 +143,29 @@ bool wiseman_get_copy(wiseman_settings_t* out) {
 }
 
 void wiseman_set_setpoint1(int16_t c) {
-    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (!s_mutex) return; 
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (g_settings.setpoint1_c != c) { g_settings.setpoint1_c = c; xSemaphoreGive(s_mutex); restart_setpoint_timer(); return; }
     xSemaphoreGive(s_mutex);
 }
 void wiseman_set_setpoint2(int16_t c) {
-    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (!s_mutex) return; 
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (g_settings.setpoint2_c != c) { g_settings.setpoint2_c = c; xSemaphoreGive(s_mutex); restart_setpoint_timer(); return; }
     xSemaphoreGive(s_mutex);
 }
 
 void wiseman_set_sound_enabled(bool en) {
-    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (!s_mutex) return; 
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (g_settings.sound_enabled != en) { g_settings.sound_enabled = en; }
     xSemaphoreGive(s_mutex);
 }
 
 void wiseman_set_display_brightness(uint8_t pct) {
     if (pct > 100) pct = 100;
-    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (!s_mutex) return; 
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (g_settings.display_brightness != pct) { g_settings.display_brightness = pct; }
     xSemaphoreGive(s_mutex);
 }
@@ -174,7 +178,8 @@ void wiseman_set_wifi_credentials(const char* ssid, const char* pass) {
     char new_pass[65] = {0};
     strncpy(new_ssid, ssid, sizeof(new_ssid)-1);
     strncpy(new_pass, pass, sizeof(new_pass)-1);
-    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (!s_mutex) return;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (strncmp(g_settings.wifi_ssid, new_ssid, sizeof(g_settings.wifi_ssid)) != 0 ||
         strncmp(g_settings.wifi_pass, new_pass, sizeof(g_settings.wifi_pass)) != 0) {
         memcpy(g_settings.wifi_ssid, new_ssid, sizeof(g_settings.wifi_ssid));

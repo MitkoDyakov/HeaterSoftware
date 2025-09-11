@@ -7,7 +7,7 @@
 
 #include "switchboard/user_input.h"
 #include "mailman/i2c_task.h"
-#include "dj/buzzer.h"
+#include "composer/buzzer.h"
 #include "wiseman/wiseman.h"
 
 static const char *TAG = "APP_MAIN";
@@ -53,12 +53,12 @@ static esp_err_t i2c_send_and_wait(i2c_msg_t *msg, void *out_buf, size_t out_siz
 static void i2c_test_task(void *arg) {
 	vTaskDelay(pdMS_TO_TICKS(500)); // allow peripheral setup
 
-	// 1) Set PD PDO to index 1 (example: 9V) just for test
+	// 1) Request PD fixed voltage to 9V just for test
 	{
 		bool pd_result = false;
 		i2c_msg_t msg = {0};
 		msg.type = I2C_MSG_PD_SET_PDO;
-		msg.data.pd_set.set_voltage = 1; // adjust as needed
+		msg.data.pd_set.set_voltage = 9; // valid values: 5, 9, 15, 20
 		esp_err_t err = i2c_send_and_wait(&msg, &pd_result, sizeof(pd_result), pdMS_TO_TICKS(1000));
 		ESP_LOGI(TAG, "PD SET PDO -> err=%s result=%d", esp_err_to_name(err), (int)pd_result);
 	}
