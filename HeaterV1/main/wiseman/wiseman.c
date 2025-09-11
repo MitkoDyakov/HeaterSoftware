@@ -25,6 +25,7 @@ static const wiseman_settings_t g_defaults = {
     .display_brightness = 75,
     .wifi_ssid = "",
     .wifi_pass = "",
+    .op_time_min = 0,
 };
 
 // Per-setpoint autosave debounce state (not global)
@@ -166,8 +167,15 @@ void wiseman_set_display_brightness(uint8_t pct) {
     if (pct > 100) pct = 100;
     if (!s_mutex) return; 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (g_settings.display_brightness != pct) { g_settings.display_brightness = pct; }
+    bool changed = (g_settings.display_brightness != pct);
+    if (changed) {
+        g_settings.display_brightness = pct;
+    }
     xSemaphoreGive(s_mutex);
+    if (changed) {
+        // Persist immediately (user-driven change). Note: This increases flash wear if brightness is changed very frequently.
+        (void)wiseman_save_now();
+    }
 }
 
 void wiseman_set_wifi_credentials(const char* ssid, const char* pass) {
@@ -191,4 +199,22 @@ void wiseman_set_wifi_credentials(const char* ssid, const char* pass) {
 void wiseman_set_autosave_timeout(uint32_t seconds) {
     s_setpoint_autosave_secs = seconds;
     // Do not start now; only restart when setpoint changes
+}
+
+uint32_t wiseman_get_op_time_minutes(void) {
+    if (!s_mutex) return 0;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    uint32_t v = g_settings.op_time_min;
+    xSemaphoreGive(s_mutex);
+    return v;
+}
+
+void wiseman_add_op_time_minutes(uint32_t minutes) {
+    if (minutes == 0) return;
+    if (!s_mutex) return;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    uint64_t sum = (uint64_t)g_settings.op_time_min + (uint64_t)minutes;
+    if (sum > 0xFFFFFFFFu) sum = 0xFFFFFFFFu; // saturate
+    g_settings.op_time_min = (uint32_t)sum;
+    xSemaphoreGive(s_mutex);
 }

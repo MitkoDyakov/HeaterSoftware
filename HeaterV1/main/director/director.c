@@ -29,6 +29,8 @@
 #include "HeaterGUI_gen.h"
 #include "director.h"
 #include "switchboard/user_input.h"
+#include "wiseman/wiseman.h"
+#include "driver/ledc.h"
 
 //patch -p1 < ../../lvgl_translation_fix_forward.patch
 //Copilot Chat: Open in Editor Tab 
@@ -97,6 +99,58 @@ static QueueHandle_t g_button_queue = NULL; /* Provided by main (switchboard) */
 #define PIN_NUM_RST  39
 
 #define BACKLIGHT_CONTROL_PIN   (10)
+
+// ---------------- Backlight PWM (LEDC) ----------------
+#define BACKLIGHT_LEDC_TIMER       LEDC_TIMER_0
+#define BACKLIGHT_LEDC_MODE        LEDC_LOW_SPEED_MODE
+#define BACKLIGHT_LEDC_CHANNEL     LEDC_CHANNEL_0
+#define BACKLIGHT_LEDC_DUTY_RES    LEDC_TIMER_10_BIT   // 0..1023
+#define BACKLIGHT_LEDC_FREQ_HZ     5000                // 5 kHz (no flicker)
+
+static uint16_t s_backlight_max_duty = (1u << 10) - 1; // 1023 for 10-bit
+static uint8_t  s_backlight_last_pct = 0xFF;           // force initial apply
+
+static void backlight_pwm_init(uint8_t initial_pct) {
+    // Configure timer
+    const ledc_timer_config_t timer_cfg = {
+        .speed_mode       = BACKLIGHT_LEDC_MODE,
+        .duty_resolution  = BACKLIGHT_LEDC_DUTY_RES,
+        .timer_num        = BACKLIGHT_LEDC_TIMER,
+        .freq_hz          = BACKLIGHT_LEDC_FREQ_HZ,
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&timer_cfg);
+
+    // Configure channel
+    const ledc_channel_config_t ch_cfg = {
+        .gpio_num       = BACKLIGHT_CONTROL_PIN,
+        .speed_mode     = BACKLIGHT_LEDC_MODE,
+        .channel        = BACKLIGHT_LEDC_CHANNEL,
+        .intr_type      = LEDC_INTR_DISABLE,
+        .timer_sel      = BACKLIGHT_LEDC_TIMER,
+        .duty           = 0,
+        .hpoint         = 0,
+        .flags.output_invert = 0
+    };
+    ledc_channel_config(&ch_cfg);
+
+    s_backlight_last_pct = 0xFF; // ensure set
+    // Apply initial brightness
+    uint8_t pct = initial_pct > 100 ? 100 : initial_pct;
+    uint32_t duty = (pct * s_backlight_max_duty) / 100;
+    ledc_set_duty(BACKLIGHT_LEDC_MODE, BACKLIGHT_LEDC_CHANNEL, duty);
+    ledc_update_duty(BACKLIGHT_LEDC_MODE, BACKLIGHT_LEDC_CHANNEL);
+    s_backlight_last_pct = pct;
+}
+
+static void backlight_set_brightness(uint8_t pct) {
+    if (pct > 100) pct = 100;
+    if (pct == s_backlight_last_pct) return; // no change
+    uint32_t duty = (pct * s_backlight_max_duty) / 100;
+    ledc_set_duty(BACKLIGHT_LEDC_MODE, BACKLIGHT_LEDC_CHANNEL, duty);
+    ledc_update_duty(BACKLIGHT_LEDC_MODE, BACKLIGHT_LEDC_CHANNEL);
+    s_backlight_last_pct = pct;
+}
 
 #define IMAGE_WIDTH  240
 #define IMAGE_HEIGHT 135
@@ -171,10 +225,11 @@ void lvgl_init_display(void)
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle, true));
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
-    // Initialize backlight
-    gpio_reset_pin(BACKLIGHT_CONTROL_PIN);
-    gpio_set_direction(BACKLIGHT_CONTROL_PIN, GPIO_MODE_OUTPUT);
-    gpio_set_level(BACKLIGHT_CONTROL_PIN, 0); // Turn on backlight
+    // Initialize backlight PWM using saved brightness setting
+    uint8_t initial_brightness = 100; // fallback
+    const wiseman_settings_t *ws = wiseman_get();
+    if (ws) initial_brightness = ws->display_brightness;
+    backlight_pwm_init(initial_brightness);
 
     // Create LVGL display
     lv_display_t *lvDisplay = lv_display_create(135, 240);
@@ -248,11 +303,11 @@ static void director_task(void *arg)
     bool chan2 = true;
 
     // ========= Main UI task loop (sole owner of LVGL calls) =========
-    while (1)
-    {
+    uint32_t brightness_poll_elapsed_ms = 0;
+    while (1) {
         // Drain button events here (replaces vConsoleTask)
         event_msg_t msg;
-    while (xQueueReceive(g_button_queue, &msg, 0) == pdTRUE) {
+        while (xQueueReceive(g_button_queue, &msg, 0) == pdTRUE) {
             if (msg.event == BUTTON_EVENT_SHORT) {
                 switch (msg.btn_id) {
                     case 40: { // "RIGHT_BOTTOM"
@@ -321,6 +376,13 @@ static void director_task(void *arg)
         }
 
         // Run LVGL
+        // Periodically poll brightness setting (cheap) every ~250 ms
+        if ((brightness_poll_elapsed_ms += 5) >= 250) {
+            brightness_poll_elapsed_ms = 0;
+            const wiseman_settings_t *ws_cur = wiseman_get();
+            if (ws_cur) backlight_set_brightness(ws_cur->display_brightness);
+        }
+
         lv_timer_handler();
         vTaskDelay(pdMS_TO_TICKS(5));
     }

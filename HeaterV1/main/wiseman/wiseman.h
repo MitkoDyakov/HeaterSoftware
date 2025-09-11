@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 // Versioning for settings struct; bump when format changes.
-#define WISEMAN_SETTINGS_VERSION 1
+#define WISEMAN_SETTINGS_VERSION 2
 
 // Auto-save debounce for setpoints (seconds) default
 #ifndef WISEMAN_SETPOINT_AUTOSAVE_SECS_DEFAULT
@@ -26,6 +26,7 @@ typedef struct {
     uint8_t display_brightness; // 0-100 percent
     char wifi_ssid[33];       // null-terminated
     char wifi_pass[65];       // null-terminated
+    uint32_t op_time_min;     // accumulated operating time (minutes)
     // Add more as required
 } wiseman_settings_t;
 
@@ -36,6 +37,10 @@ bool wiseman_init(void);
 const wiseman_settings_t* wiseman_get(void);
 // Thread-safe copy of current settings into caller-provided buffer
 bool wiseman_get_copy(wiseman_settings_t* out);
+
+// Operating time accessors
+uint32_t wiseman_get_op_time_minutes(void);
+void wiseman_add_op_time_minutes(uint32_t minutes); // add (saturating) and optionally persist later
 
 // Mutators: mark-dirty on change and schedule auto-save
 void wiseman_set_setpoint1(int16_t c);
