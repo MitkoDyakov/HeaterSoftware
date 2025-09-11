@@ -9,9 +9,9 @@ extern "C" {
 // Versioning for settings struct; bump when format changes.
 #define WISEMAN_SETTINGS_VERSION 1
 
-// Auto-save debounce (seconds) default
-#ifndef WISEMAN_AUTOSAVE_SECS_DEFAULT
-#define WISEMAN_AUTOSAVE_SECS_DEFAULT 5
+// Auto-save debounce for setpoints (seconds) default
+#ifndef WISEMAN_SETPOINT_AUTOSAVE_SECS_DEFAULT
+#define WISEMAN_SETPOINT_AUTOSAVE_SECS_DEFAULT 30
 #endif
 
 // Settings structure; add fields as needed. Keep packed/stable.
@@ -34,6 +34,8 @@ bool wiseman_init(void);
 
 // Accessors
 const wiseman_settings_t* wiseman_get(void);
+// Thread-safe copy of current settings into caller-provided buffer
+bool wiseman_get_copy(wiseman_settings_t* out);
 
 // Mutators: mark-dirty on change and schedule auto-save
 void wiseman_set_setpoint1(int16_t c);
@@ -48,7 +50,7 @@ bool wiseman_save_now(void);
 // Reset to compiled defaults and save
 bool wiseman_reset_to_defaults(void);
 
-// Configure autosave debounce timeout in seconds (0 disables autosave)
+// Configure setpoint autosave debounce timeout in seconds (0 disables autosave)
 void wiseman_set_autosave_timeout(uint32_t seconds);
 
 #ifdef __cplusplus

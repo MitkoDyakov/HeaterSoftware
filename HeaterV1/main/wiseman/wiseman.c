@@ -13,52 +13,42 @@
 static const char* TAG = "WISEMAN";
 
 // In-RAM settings and defaults
+static SemaphoreHandle_t s_mutex = NULL;
 static wiseman_settings_t g_settings;
 static const wiseman_settings_t g_defaults = {
     .version = WISEMAN_SETTINGS_VERSION,
-    .setpoint1_c = 0,
-    .setpoint2_c = 0,
+    .setpoint1_c = 30,
+    .setpoint2_c = 30,
     .heater1_enabled = false,
     .heater2_enabled = false,
     .sound_enabled = true,
-    .display_brightness = 50,
+    .display_brightness = 75,
     .wifi_ssid = "",
     .wifi_pass = "",
 };
 
-// Autosave debounce state
-static TimerHandle_t s_autosave_timer = NULL;
-static uint32_t s_autosave_secs = WISEMAN_AUTOSAVE_SECS_DEFAULT;
-static bool s_dirty = false;
+// Per-setpoint autosave debounce state (not global)
+static TimerHandle_t s_setpoint_timer = NULL; // one-shot
+static uint32_t s_setpoint_autosave_secs = WISEMAN_SETPOINT_AUTOSAVE_SECS_DEFAULT;
 
-static void start_autosave_timer(void);
-static void autosave_cb(TimerHandle_t xTimer) {
+static void setpoint_autosave_cb(TimerHandle_t xTimer) {
     (void)xTimer;
-    if (s_dirty) {
-        if (wiseman_save_now()) {
-            s_dirty = false;
-            ESP_LOGI(TAG, "autosave complete");
-        } else {
-            ESP_LOGW(TAG, "autosave failed; will retry later");
-            // Keep dirty to attempt next change or next timer run
-        }
+    if (wiseman_save_now()) {
+        ESP_LOGI(TAG, "setpoints autosaved");
+    } else {
+        ESP_LOGW(TAG, "setpoints autosave failed");
     }
 }
 
-static void mark_dirty(void) {
-    s_dirty = true;
-    start_autosave_timer();
-}
-
-static void start_autosave_timer(void) {
-    if (s_autosave_secs == 0) return; // disabled
-    if (!s_autosave_timer) {
-        s_autosave_timer = xTimerCreate("wis_autosave", pdMS_TO_TICKS(1000 * s_autosave_secs), pdFALSE, NULL, autosave_cb);
+static void restart_setpoint_timer(void) {
+    if (s_setpoint_autosave_secs == 0) return; // disabled
+    if (!s_setpoint_timer) {
+        s_setpoint_timer = xTimerCreate("wis_sp_autosave", pdMS_TO_TICKS(1000 * s_setpoint_autosave_secs), pdFALSE, NULL, setpoint_autosave_cb);
     }
-    if (s_autosave_timer) {
-        xTimerStop(s_autosave_timer, 0);
-        xTimerChangePeriod(s_autosave_timer, pdMS_TO_TICKS(1000 * s_autosave_secs), 0);
-        xTimerStart(s_autosave_timer, 0);
+    if (s_setpoint_timer) {
+        xTimerStop(s_setpoint_timer, 0);
+        xTimerChangePeriod(s_setpoint_timer, pdMS_TO_TICKS(1000 * s_setpoint_autosave_secs), 0);
+        xTimerStart(s_setpoint_timer, 0);
     }
 }
 
@@ -106,10 +96,13 @@ static bool load_from_nvs(void) {
 
 bool wiseman_save_now(void) {
     nvs_handle_t h;
+    if (!s_mutex) return false;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (nvs_open_rw(&h) != ESP_OK) return false;
     esp_err_t err = nvs_set_blob(h, WISEMAN_KEY, &g_settings, sizeof(g_settings));
     if (err == ESP_OK) err = nvs_commit(h);
     nvs_close(h);
+    xSemaphoreGive(s_mutex);
     return (err == ESP_OK);
 }
 
@@ -126,32 +119,51 @@ bool wiseman_init(void) {
     }
     ESP_ERROR_CHECK(err);
 
+    if (!s_mutex) s_mutex = xSemaphoreCreateMutex();
+    configASSERT(s_mutex);
+
     if (!load_from_nvs()) {
         ESP_LOGI(TAG, "loading defaults");
         apply_defaults();
         (void)wiseman_save_now();
     }
-    s_dirty = false;
-    start_autosave_timer();
+    // No global autosave. Setpoints have their own debounce timer.
     return true;
 }
 
 const wiseman_settings_t* wiseman_get(void) { return &g_settings; }
 
+bool wiseman_get_copy(wiseman_settings_t* out) {
+    if (!out) return false;
+    if (!s_mutex) return false;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    memcpy(out, &g_settings, sizeof(g_settings));
+    xSemaphoreGive(s_mutex);
+    return true;
+}
+
 void wiseman_set_setpoint1(int16_t c) {
-    if (g_settings.setpoint1_c != c) { g_settings.setpoint1_c = c; mark_dirty(); }
+    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (g_settings.setpoint1_c != c) { g_settings.setpoint1_c = c; xSemaphoreGive(s_mutex); restart_setpoint_timer(); return; }
+    xSemaphoreGive(s_mutex);
 }
 void wiseman_set_setpoint2(int16_t c) {
-    if (g_settings.setpoint2_c != c) { g_settings.setpoint2_c = c; mark_dirty(); }
+    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (g_settings.setpoint2_c != c) { g_settings.setpoint2_c = c; xSemaphoreGive(s_mutex); restart_setpoint_timer(); return; }
+    xSemaphoreGive(s_mutex);
 }
 
 void wiseman_set_sound_enabled(bool en) {
-    if (g_settings.sound_enabled != en) { g_settings.sound_enabled = en; mark_dirty(); }
+    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (g_settings.sound_enabled != en) { g_settings.sound_enabled = en; }
+    xSemaphoreGive(s_mutex);
 }
 
 void wiseman_set_display_brightness(uint8_t pct) {
     if (pct > 100) pct = 100;
-    if (g_settings.display_brightness != pct) { g_settings.display_brightness = pct; mark_dirty(); }
+    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (g_settings.display_brightness != pct) { g_settings.display_brightness = pct; }
+    xSemaphoreGive(s_mutex);
 }
 
 void wiseman_set_wifi_credentials(const char* ssid, const char* pass) {
@@ -162,15 +174,16 @@ void wiseman_set_wifi_credentials(const char* ssid, const char* pass) {
     char new_pass[65] = {0};
     strncpy(new_ssid, ssid, sizeof(new_ssid)-1);
     strncpy(new_pass, pass, sizeof(new_pass)-1);
+    if (!s_mutex) return; xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (strncmp(g_settings.wifi_ssid, new_ssid, sizeof(g_settings.wifi_ssid)) != 0 ||
         strncmp(g_settings.wifi_pass, new_pass, sizeof(g_settings.wifi_pass)) != 0) {
         memcpy(g_settings.wifi_ssid, new_ssid, sizeof(g_settings.wifi_ssid));
         memcpy(g_settings.wifi_pass, new_pass, sizeof(g_settings.wifi_pass));
-        mark_dirty();
     }
+    xSemaphoreGive(s_mutex);
 }
 
 void wiseman_set_autosave_timeout(uint32_t seconds) {
-    s_autosave_secs = seconds;
-    start_autosave_timer();
+    s_setpoint_autosave_secs = seconds;
+    // Do not start now; only restart when setpoint changes
 }
