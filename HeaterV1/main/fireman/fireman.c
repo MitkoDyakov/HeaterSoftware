@@ -2,14 +2,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
+#include "pwm_alloc.h"
 #include "driver/ledc.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "mailman/i2c_task.h"
 #include "pinout.h"
-#include "fireman.h"
 #include "wiseman/wiseman.h"
 
 #define BOARD_MAX_TEMPERATURE_C            60.0f  /* °C – shut off above this */
@@ -19,24 +18,23 @@
 #define DERIVATIVE_GAIN                    4.0f   /* s   */
 #define DERIVATIVE_CLAMP_C_PER_SECOND      5.0f
 #define MAX_DUTY               ((1 << 13) - 1)
-
 ledc_channel_config_t heater_channel_1 = {
-    .channel    = LEDC_CHANNEL_2,
+    .channel    = PWM_HEATER_CH1,
     .duty       = 0,
     .gpio_num   = HEATER_CHANNEL_1,
     .speed_mode = LEDC_LOW_SPEED_MODE,
     .hpoint     = 0,
-    .timer_sel  = LEDC_TIMER_3,
+    .timer_sel  = PWM_HEATER_TIMER,
     .flags.output_invert = 0
 };
 
 ledc_channel_config_t heater_channel_2 = {
-    .channel    = LEDC_CHANNEL_3,
+    .channel    = PWM_HEATER_CH2,
     .duty       = 0,
     .gpio_num   = HEATER_CHANNEL_2,
     .speed_mode = LEDC_LOW_SPEED_MODE,
     .hpoint     = 0,
-    .timer_sel  = LEDC_TIMER_3,
+    .timer_sel  = PWM_HEATER_TIMER,
     .flags.output_invert = 0
 };
 

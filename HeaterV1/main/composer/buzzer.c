@@ -5,9 +5,10 @@
 #include "freertos/semphr.h"
 #include "esp_log.h"
 
-#define BUZZER_LEDC_TIMER      LEDC_TIMER_0
+#include "pwm_alloc.h"
+#define BUZZER_LEDC_TIMER      PWM_BUZZER_TIMER
 #define BUZZER_LEDC_MODE       LEDC_LOW_SPEED_MODE
-#define BUZZER_LEDC_CHANNEL    LEDC_CHANNEL_0
+#define BUZZER_LEDC_CHANNEL    PWM_BUZZER_CHANNEL
 #define BUZZER_LEDC_DUTY_RES   LEDC_TIMER_10_BIT  // 10-bit resolution
 #define BUZZER_FREQUENCY_HZ    4000               // 4 kHz
 #define BUZZER_DUTY_PERCENT    50                 // square wave

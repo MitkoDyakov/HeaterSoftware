@@ -31,6 +31,7 @@
 #include "switchboard/user_input.h"
 #include "wiseman/wiseman.h"
 #include "driver/ledc.h"
+#include "pwm_alloc.h"
 
 //patch -p1 < ../../lvgl_translation_fix_forward.patch
 //Copilot Chat: Open in Editor Tab 
@@ -101,9 +102,9 @@ static QueueHandle_t g_button_queue = NULL; /* Provided by main (switchboard) */
 #define BACKLIGHT_CONTROL_PIN   (10)
 
 // ---------------- Backlight PWM (LEDC) ----------------
-#define BACKLIGHT_LEDC_TIMER       LEDC_TIMER_0
+#define BACKLIGHT_LEDC_TIMER       PWM_BACKLIGHT_TIMER
 #define BACKLIGHT_LEDC_MODE        LEDC_LOW_SPEED_MODE
-#define BACKLIGHT_LEDC_CHANNEL     LEDC_CHANNEL_0
+#define BACKLIGHT_LEDC_CHANNEL     PWM_BACKLIGHT_CHANNEL
 #define BACKLIGHT_LEDC_DUTY_RES    LEDC_TIMER_10_BIT   // 0..1023
 #define BACKLIGHT_LEDC_FREQ_HZ     5000                // 5 kHz (no flicker)
 
