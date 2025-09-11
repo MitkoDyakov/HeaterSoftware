@@ -12,6 +12,9 @@
 
 static const char *TAG = "APP_MAIN";
 
+//patch -p1 < ../../lvgl_translation_fix_forward.patch
+//Copilot Chat: Open in Editor Tab 
+
 // Queues
 static QueueHandle_t g_button_queue;
 static QueueHandle_t g_i2c_queue;
