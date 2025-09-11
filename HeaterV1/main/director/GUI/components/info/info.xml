@@ -1,0 +1,19 @@
+<component>
+    <api>
+        <prop name="dummy" type="string" default="some text here"></prop>
+    </api>
+ 
+     <previews>
+        <preview name="info" style_bg_color="#backgraund" width="141" height="126" />
+    </previews>
+
+    <styles>
+        <style name="main" width="141" height="126" pad_all="0" border_width="0" text_font="font_ch_label_temp_small"/>
+    </styles>
+    
+    <view scrollable="false">
+        <style name="main" />
+        <lv_image src="info_bg" style_pad_all="0"></lv_image>
+        <lv_label text="$dummy" style_text_color="0xffffff" style_text_align="center" x="4" y="49" width="133" height="30"/>
+    </view>
+</component>
