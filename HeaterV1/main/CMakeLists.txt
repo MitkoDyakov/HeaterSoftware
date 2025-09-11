@@ -6,14 +6,18 @@ idf_component_register(
         "mailman/ads7142.c"
         "mailman/TMP110.c"
         "switchboard/user_input.c"
-        "dj/buzzer.c"
+        "composer/buzzer.c"
         "fireman/fireman.c"
+    "wiseman/wiseman.c"
     INCLUDE_DIRS
         "."
         "mailman"
         "switchboard"
-        "dj"
+        "composer"
         "fireman"
+    "wiseman"
+    REQUIRES
+        nvs_flash
 )
 
 idf_build_set_property(COMPILE_OPTIONS "-DLV_CONF_PATH=\"${CMAKE_SOURCE_DIR}/main/lv_conf.h\"" APPEND)

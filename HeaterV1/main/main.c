@@ -8,6 +8,7 @@
 #include "switchboard/user_input.h"
 #include "mailman/i2c_task.h"
 #include "dj/buzzer.h"
+#include "wiseman/wiseman.h"
 
 static const char *TAG = "APP_MAIN";
 
@@ -93,6 +94,9 @@ static void i2c_test_task(void *arg) {
 }
 
 void app_main(void) {
+	// Initialize persistent settings (loads from NVS or applies defaults)
+	wiseman_init();
+
 	// Create queues
 	g_button_queue = xQueueCreate(32, sizeof(event_msg_t));
 	g_i2c_queue    = xQueueCreate(10, sizeof(i2c_msg_t));

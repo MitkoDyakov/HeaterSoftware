@@ -10,6 +10,7 @@
 #include "mailman/i2c_task.h"
 #include "pinout.h"
 #include "fireman.h"
+#include "wiseman/wiseman.h"
 
 #define BOARD_MAX_TEMPERATURE_C            60.0f  /* °C – shut off above this */
 #define SAMPLING_PERIOD_MILLISECONDS       500     /* 2 Hz control loop       */
@@ -160,6 +161,15 @@ bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue)
 
     g_i2c_queue = i2c_queue;
     g_jumbo_queue = jumbotron_queue; // may be NULL (mock)
+
+    // Initialize Fireman state from persisted settings
+    const wiseman_settings_t* s = wiseman_get();
+    // Heaters must be disabled on every PoR regardless of persisted state
+    heater1_enabled = false;
+    heater2_enabled = false;
+    setpoint1_c = s->setpoint1_c;
+    setpoint2_c = s->setpoint2_c;
+
     xTaskCreate(fireman_task, "fireman", 4096, NULL, 8, NULL);
 
     return true;
@@ -167,9 +177,13 @@ bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue)
 
 void fireman_set_heater1_enabled(bool en) { heater1_enabled = en; }
 void fireman_set_heater2_enabled(bool en) { heater2_enabled = en; }
-void fireman_set_setpoint1(int setpoint_c) { setpoint1_c = setpoint_c; }
-void fireman_set_setpoint2(int setpoint_c) { setpoint2_c = setpoint_c; }
-void fireman_set_setpoints(int sp1_c, int sp2_c) { setpoint1_c = sp1_c; setpoint2_c = sp2_c; }
+void fireman_set_setpoint1(int setpoint_c) { setpoint1_c = setpoint_c; wiseman_set_setpoint1((int16_t)setpoint_c); }
+void fireman_set_setpoint2(int setpoint_c) { setpoint2_c = setpoint_c; wiseman_set_setpoint2((int16_t)setpoint_c); }
+void fireman_set_setpoints(int sp1_c, int sp2_c) {
+    setpoint1_c = sp1_c; setpoint2_c = sp2_c;
+    wiseman_set_setpoint1((int16_t)sp1_c);
+    wiseman_set_setpoint2((int16_t)sp2_c);
+}
 
 static esp_err_t request_adc(adc_result_t *out) {
     i2c_msg_t msg = {0};
