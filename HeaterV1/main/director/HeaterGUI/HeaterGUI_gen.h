@@ -1,9 +1,9 @@
 /**
- * @file GUI_gen.h
+ * @file HeaterGUI_gen.h
  */
 
-#ifndef GUI_GEN_H
-#define GUI_GEN_H
+#ifndef HEATERGUI_GEN_H
+#define HEATERGUI_GEN_H
 
 #ifndef UI_SUBJECT_STRING_LENGTH
 #define UI_SUBJECT_STRING_LENGTH 256
@@ -116,7 +116,7 @@ extern lv_subject_t command;
  * Initialize the component library
  */
 
-void GUI_init_gen(const char * asset_path);
+void HeaterGUI_init_gen(const char * asset_path);
 
 /**********************
  *      MACROS
@@ -132,7 +132,9 @@ void GUI_init_gen(const char * asset_path);
 #include "components/control/control_gen.h"
 #include "components/info/info_gen.h"
 #include "components/page/page_gen.h"
+#include "components/power/power_gen.h"
 #include "components/row/row_gen.h"
+#include "components/settings/settings_gen.h"
 #include "components/target_tmp/target_tmp_gen.h"
 #include "screens/demo_gen.h"
 #include "screens/home_gen.h"
@@ -141,4 +143,4 @@ void GUI_init_gen(const char * asset_path);
 } /*extern "C"*/
 #endif
 
-#endif /*GUI_GEN_H*/
+#endif /*HEATERGUI_GEN_H*/

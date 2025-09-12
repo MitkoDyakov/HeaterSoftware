@@ -107,7 +107,7 @@ bool wiseman_save_now(void) {
     esp_err_t err = nvs_set_blob(h, WISEMAN_KEY, &g_settings, sizeof(g_settings));
     if (err == ESP_OK) err = nvs_commit(h);
     nvs_close(h);
-    xSemaphoreGive(s_mutex);`
+    xSemaphoreGive(s_mutex);
     // Manual save supersedes any pending debounced autosave -> cancel timer if running
     if (s_setpoint_timer) {
         xTimerStop(s_setpoint_timer, 0);

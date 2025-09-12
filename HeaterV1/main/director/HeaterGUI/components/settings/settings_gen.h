@@ -1,9 +1,9 @@
 /**
- * @file GUI.h
+ * @file settings_gen.h
  */
 
-#ifndef GUI_H
-#define GUI_H
+#ifndef SETTINGS_H
+#define SETTINGS_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,7 +12,11 @@ extern "C" {
 /*********************
  *      INCLUDES
  *********************/
-#include "GUI_gen.h"
+#ifdef LV_LVGL_H_INCLUDE_SIMPLE
+    #include "lvgl.h"
+#else
+    #include "lvgl/lvgl.h"
+#endif
 
 /*********************
  *      DEFINES
@@ -22,20 +26,12 @@ extern "C" {
  *      TYPEDEFS
  **********************/
 
-
-
-/**********************
- * GLOBAL VARIABLES
- **********************/
-
 /**********************
  * GLOBAL PROTOTYPES
  **********************/
 
-/**
- * Initialize the component library
- */
-void GUI_init(const char * asset_path);
+
+lv_obj_t * settings_create(lv_obj_t * parent, const char * dummy);
 
 /**********************
  *      MACROS
@@ -45,4 +41,4 @@ void GUI_init(const char * asset_path);
 } /*extern "C"*/
 #endif
 
-#endif /*GUI_H*/
+#endif /*SETTINGS_H*/
