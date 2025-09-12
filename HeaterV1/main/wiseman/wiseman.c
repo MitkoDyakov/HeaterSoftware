@@ -96,14 +96,22 @@ static bool load_from_nvs(void) {
 }
 
 bool wiseman_save_now(void) {
-    nvs_handle_t h;
     if (!s_mutex) return false;
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (nvs_open_rw(&h) != ESP_OK) return false;
+    nvs_handle_t h;
+    esp_err_t open_err = nvs_open_rw(&h);
+    if (open_err != ESP_OK) {
+        xSemaphoreGive(s_mutex); // avoid deadlock on early failure
+        return false;
+    }
     esp_err_t err = nvs_set_blob(h, WISEMAN_KEY, &g_settings, sizeof(g_settings));
     if (err == ESP_OK) err = nvs_commit(h);
     nvs_close(h);
-    xSemaphoreGive(s_mutex);
+    xSemaphoreGive(s_mutex);`
+    // Manual save supersedes any pending debounced autosave -> cancel timer if running
+    if (s_setpoint_timer) {
+        xTimerStop(s_setpoint_timer, 0);
+    }
     return (err == ESP_OK);
 }
 
