@@ -9,7 +9,7 @@ idf_component_register(
         "composer/buzzer.c"
         "fireman/fireman.c"
         "wiseman/wiseman.c"
-    "director/director.c"
+        "director/director.c"
         "director/HeaterGUI/HeaterGUI_gen.c"
         "director/HeaterGUI/HeaterGUI.c"
         "director/HeaterGUI/ui.c"
@@ -27,6 +27,8 @@ idf_component_register(
         "director/HeaterGUI/components/row/row_gen.c"
         "director/HeaterGUI/components/info/info_gen.c"
         "director/HeaterGUI/components/target_tmp/target_tmp_gen.c"
+        "director/HeaterGUI/components/settings/settings_gen.c"
+        "director/HeaterGUI/components/power/power_gen.c"
     INCLUDE_DIRS
         "."
         "mailman"
@@ -34,7 +36,7 @@ idf_component_register(
         "composer"
         "fireman"
         "wiseman"
-    "director"
+        "director"
         "director/HeaterGUI"
         "director/HeaterGUI/screens" 
         "director/HeaterGUI/images" 
@@ -46,6 +48,8 @@ idf_component_register(
         "director/HeaterGUI/components/row/"
         "director/HeaterGUI/components/info/"
         "director/HeaterGUI/components/target_tmp/"
+        "director/HeaterGUI/components/settings/"
+        "director/HeaterGUI/components/power/"
 )
 
 idf_build_set_property(COMPILE_OPTIONS "-DLV_CONF_PATH=\"${CMAKE_SOURCE_DIR}/main/lv_conf.h\"" APPEND)

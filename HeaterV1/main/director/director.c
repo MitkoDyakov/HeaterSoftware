@@ -86,9 +86,9 @@ static void load_page(uint8_t page_id) {
             lv_obj_t * control_0 = control_create(row_5, &command, &opTime);
             lv_obj_set_style_pad_all(control_0, 0, 0);
         } break;
-        case 1: (void)info_create(s_page_container, "Page 2"); break;
-        case 2: (void)info_create(s_page_container, "Page 3"); break;
-        case 3: (void)info_create(s_page_container, "Page 4"); break;
+        case 1: (void)settings_create(s_page_container); break;
+        case 2: (void)power_create(s_page_container); break;
+        case 3: (void)info_create(s_page_container); break;
         default: break;
     }
 }

@@ -31,7 +31,7 @@ extern "C" {
  **********************/
 
 
-lv_obj_t * settings_create(lv_obj_t * parent, const char * dummy);
+lv_obj_t * settings_create(lv_obj_t * parent);
 
 /**********************
  *      MACROS

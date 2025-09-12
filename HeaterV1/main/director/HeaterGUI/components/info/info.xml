@@ -1,19 +1,47 @@
 <component>
-    <api>
-        <prop name="dummy" type="string" default="some text here"></prop>
-    </api>
- 
      <previews>
         <preview name="info" style_bg_color="#backgraund" width="141" height="126" />
     </previews>
 
     <styles>
-        <style name="main" width="141" height="126" pad_all="0" border_width="0" text_font="font_ch_label_temp_small"/>
+        <style bg_opa="0" name="main" width="141" height="126" pad_all="0" border_width="0" text_font="font_ch_label_temp_small"/>
     </styles>
     
-    <view scrollable="false">
+    <view extends="lv_image" scrollable="false" src="info_bg" inner_align="stretch">
         <style name="main" />
-        <lv_image src="info_bg" style_pad_all="0"></lv_image>
-        <lv_label text="$dummy" style_text_color="0xffffff" style_text_align="center" x="4" y="49" width="133" height="30"/>
+        <column width="100%" height="100%" style_bg_opa="0" style_pad_all="5">
+            <row width="100%" height="24">
+                <column height="100%" style_pad_right="0"  style_bg_opa="0">
+                    <lv_label text="SOFTWARE:" style_text_color="#subtext" style_text_align="center"/>
+                </column>   
+                <column height="100%" style_pad_right="0" style_bg_opa="0" style_pad_left="5">
+                     <lv_label text="0.1v" style_text_color="#maintext" style_text_align="left"/>
+                </column>          
+            </row>
+            <row width="100%" height="24">
+                <column height="100%" style_pad_right="0"  style_bg_opa="0">
+                    <lv_label text="HARDWARE:" style_text_color="#subtext" style_text_align="center"/>
+                </column>   
+                <column height="100%" style_pad_right="0" style_bg_opa="0" style_pad_left="5">
+                     <lv_label text="2.0v" style_text_color="#maintext" style_text_align="left"/>
+                </column>          
+            </row>
+            <row width="100%" height="24">
+                <column height="100%" style_pad_right="0"  style_bg_opa="0">
+                    <lv_label text="SN:" style_text_color="#subtext" style_text_align="center"/>
+                </column>   
+                <column height="100%" style_pad_right="0" style_bg_opa="0" style_pad_left="5">
+                     <lv_label text="T001" style_text_color="#maintext" style_text_align="left"/>
+                </column>          
+            </row>
+            <row width="100%" height="24">
+                <column height="100%" style_pad_right="0"  style_bg_opa="0">
+                    <lv_label text="RUN-TIME:" style_text_color="#subtext" style_text_align="center"/>
+                </column>   
+                <column height="100%" style_pad_right="0" style_bg_opa="0" style_pad_left="5">
+                     <lv_label text="1h" style_text_color="#maintext" style_text_align="left"/>
+                </column>          
+            </row>
+        </column>
     </view>
 </component>
