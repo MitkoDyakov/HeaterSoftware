@@ -9,6 +9,7 @@ idf_component_register(
         "composer/buzzer.c"
         "fireman/fireman.c"
         "wiseman/wiseman.c"
+    "wiseman/wiseman_persist.c"
         "director/director.c"
         "director/HeaterGUI/HeaterGUI_gen.c"
         "director/HeaterGUI/HeaterGUI.c"

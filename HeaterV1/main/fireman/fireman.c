@@ -12,7 +12,7 @@
 #include "wiseman/wiseman.h"
 
 #define BOARD_MAX_TEMPERATURE_C            60.0f  /* °C – shut off above this */
-#define SAMPLING_PERIOD_MILLISECONDS       500     /* 2 Hz control loop       */
+#define CONTROL_PERIOD_MILLISECONDS        500     /* 500 ms loop: sampling + PID + optional notify */
 #define PROPORTIONAL_GAIN                  2.0f
 #define INTEGRAL_GAIN                      0.03f  /* 1/s */
 #define DERIVATIVE_GAIN                    4.0f   /* s   */
@@ -60,7 +60,7 @@ static volatile int setpoint2_c  = 0; /* Desired temperature ch2 (modified by ot
 static PID_Controller pid1;
 static PID_Controller pid2;
 static QueueHandle_t g_i2c_queue = NULL;
-static QueueHandle_t g_jumbo_queue = NULL; // mock display queue
+static QueueHandle_t g_jumbo_queue = NULL; // single-slot display queue (xQueueOverwrite)
 static volatile bool heater1_enabled = false;  /* Cross-task flag */
 static volatile bool heater2_enabled = false;  /* Cross-task flag */
 /* PD management: track current fixed voltage (5,9,15,20). PoR default is 5V */
@@ -158,7 +158,7 @@ bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue)
                        100.0f);
 
     g_i2c_queue = i2c_queue;
-    g_jumbo_queue = jumbotron_queue; // may be NULL (mock)
+    g_jumbo_queue = jumbotron_queue; // may be NULL
 
     // Initialize Fireman state from persisted settings
     const wiseman_settings_t* s = wiseman_get();
@@ -243,21 +243,19 @@ static void manage_pd_voltage(void) {
 static void fireman_task(void *arg) {
     TickType_t last_wake = xTaskGetTickCount();
     while (1) {
-        adc_result_t adc = {0};
-        if (g_i2c_queue && request_adc(&adc) == ESP_OK) {
-            /* Handle PD voltage transitions based on heater enable flags */
-            manage_pd_voltage();
-            // Send to jumbotron (mock)
-            if (g_jumbo_queue) {
-                fireman_sample_t sample = { .ch1 = adc.chan1, .ch2 = adc.chan2 };
-                (void)xQueueSend(g_jumbo_queue, &sample, 0);
-            }
+        // Wait fixed period (500ms)
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(CONTROL_PERIOD_MILLISECONDS));
 
-            float dt_s = (float)SAMPLING_PERIOD_MILLISECONDS / 1000.0f;
-            // Channel 1 control
+        adc_result_t adc = {0};
+        bool adc_ok = (g_i2c_queue && request_adc(&adc) == ESP_OK);
+
+        if (adc_ok) {
+            manage_pd_voltage();
+            float dt_s = (float)CONTROL_PERIOD_MILLISECONDS / 1000.0f;
+
+            // Heater 1
             if (heater1_enabled && setpoint1_c > 0) {
-                float t1 = (float)adc.chan1;
-                float duty1 = PIDController_Compute(&pid1, (float)setpoint1_c, t1, dt_s);
+                float duty1 = PIDController_Compute(&pid1, (float)setpoint1_c, (float)adc.chan1, dt_s);
                 uint32_t duty_val1 = (uint32_t)(MAX_DUTY * duty1 / 100.0f);
                 ledc_set_duty(heater_channel_1.speed_mode, heater_channel_1.channel, duty_val1);
                 ledc_update_duty(heater_channel_1.speed_mode, heater_channel_1.channel);
@@ -266,10 +264,10 @@ static void fireman_task(void *arg) {
                 ledc_update_duty(heater_channel_1.speed_mode, heater_channel_1.channel);
                 pid1.integralAccumulator = 0.0f; pid1.previousError = 0.0f;
             }
-            // Channel 2 control
+
+            // Heater 2
             if (heater2_enabled && setpoint2_c > 0) {
-                float t2 = (float)adc.chan2;
-                float duty2 = PIDController_Compute(&pid2, (float)setpoint2_c, t2, dt_s);
+                float duty2 = PIDController_Compute(&pid2, (float)setpoint2_c, (float)adc.chan2, dt_s);
                 uint32_t duty_val2 = (uint32_t)(MAX_DUTY * duty2 / 100.0f);
                 ledc_set_duty(heater_channel_2.speed_mode, heater_channel_2.channel, duty_val2);
                 ledc_update_duty(heater_channel_2.speed_mode, heater_channel_2.channel);
@@ -278,8 +276,23 @@ static void fireman_task(void *arg) {
                 ledc_update_duty(heater_channel_2.speed_mode, heater_channel_2.channel);
                 pid2.integralAccumulator = 0.0f; pid2.previousError = 0.0f;
             }
+
+            // After control update, attempt to send sample if director ready.
+            if (g_jumbo_queue) {
+                fireman_sample_t sample = { .ch1 = adc.chan1, .ch2 = adc.chan2 };
+                (void)xQueueOverwrite(g_jumbo_queue, &sample);
+            }
+        } else {
+            // ADC failed: force heaters off
+            ledc_set_duty(heater_channel_1.speed_mode, heater_channel_1.channel, 0);
+            ledc_update_duty(heater_channel_1.speed_mode, heater_channel_1.channel);
+            ledc_set_duty(heater_channel_2.speed_mode, heater_channel_2.channel, 0);
+            ledc_update_duty(heater_channel_2.speed_mode, heater_channel_2.channel);
+            if (g_jumbo_queue) {
+                fireman_sample_t err_sample = { .ch1 = NAN, .ch2 = NAN };
+                (void)xQueueOverwrite(g_jumbo_queue, &err_sample);
+            }
         }
-        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(SAMPLING_PERIOD_MILLISECONDS));
     }
 }
 

@@ -29,9 +29,12 @@
 #include "HeaterGUI_gen.h"
 #include "director.h"
 #include "switchboard/user_input.h"
+#include "fireman/fireman.h"
 #include "wiseman/wiseman.h"
+#include "wiseman/wiseman_persist.h"
 #include "driver/ledc.h"
 #include "pwm_alloc.h"
+#include <math.h>
 
 //patch -p1 < ../../lvgl_translation_fix_forward.patch
 //Copilot Chat: Open in Editor Tab 
@@ -116,7 +119,7 @@ static void unload_page(uint8_t page_id) {
             //clean up page 2 resources if any
         } break;
         case PAGE_SETTINGS: {
-            wiseman_save_now();
+            wiseman_request_flush(); // non-blocking: persistence task will commit shortly
         } break;
         case PAGE_INFO: {
             //clean up page 4 resources if any
@@ -134,6 +137,7 @@ static uint8_t timer_mm = 0;
 static uint8_t timer_hh = 0;
 
 static QueueHandle_t g_button_queue = NULL; /* Provided by main (switchboard) */
+static QueueHandle_t g_jumbo_queue  = NULL; /* Fireman sample queue */
 
 // ---- tick helpers (wrap-safe) ----
 // (Removed legacy debounce / emit code: switchboard handles input.)
@@ -312,9 +316,17 @@ static void ui_clock_cb(lv_timer_t *t) {
     lv_subject_copy_string(&opTime, text);
 }
 
+typedef struct {
+    QueueHandle_t button_q;
+    QueueHandle_t sample_q;
+} director_args_t;
+
 static void director_task(void *arg)
 {
-    g_button_queue = (QueueHandle_t)arg;
+    director_args_t *a = (director_args_t*)arg;
+    g_button_queue = a->button_q;
+    g_jumbo_queue  = a->sample_q;
+    vPortFree(a); // release argument struct
     configASSERT(g_button_queue);
     // Initialize LVGL
     lv_init();
@@ -356,15 +368,30 @@ static void director_task(void *arg)
     // start with home page
     load_page(PAGE_MAIN);
 
+    TickType_t last_sample_poll = xTaskGetTickCount();
+    // Director is now ready to receive first sample
+    // (Overwrite queue model: no readiness semaphore needed)
+
+    uint32_t loop_counter = 0;
     while (1) {
         // Drain button events here (replaces vConsoleTask)
         event_msg_t msg;
         while (xQueueReceive(g_button_queue, &msg, 0) == pdTRUE) {
+            ESP_LOGD("director.btn", "btn id=%d event=%d page=%u", msg.btn_id, msg.event, current_page);
             if(msg.btn_id == 45) { // "LEFT_BOTTOM"
-                // Handle LEFT_BOTTOM button press 
-                unload_page(current_page);
-                current_page = (current_page + 1) % PAGE_COUNT;
-                load_page(current_page);
+                if (msg.event == BUTTON_EVENT_SHORT || msg.event == BUTTON_EVENT_REPEAT) {
+                    uint8_t prev = current_page;
+                    uint8_t next = (current_page + 1) % PAGE_COUNT;
+                    if (next != current_page) {
+                        unload_page(current_page);
+                        current_page = next;
+                        ESP_LOGI("director.page", "Page change %u -> %u", prev, current_page);
+                        load_page(current_page);
+                        // Log stack watermark after load
+                        UBaseType_t hw = uxTaskGetStackHighWaterMark(NULL);
+                        ESP_LOGD("director.stack", "after load page=%u high-water=%u words", current_page, (unsigned)hw);
+                    }
+                }
             }else{
                 // Other buttons handled in page-specific functions
                 switch(current_page) {
@@ -376,15 +403,54 @@ static void director_task(void *arg)
                 }
             }
         }
+        // Consume at most one fireman sample per loop (prevents lengthy drains -> WDT risk)
+        if (g_jumbo_queue) {
+            fireman_sample_t latest;
+            if (xQueueReceive(g_jumbo_queue, &latest, 0) == pdTRUE) {
+                bool pd_fail = isnan(latest.ch1) || isnan(latest.ch2);
+                if (pd_fail) {
+                    lv_subject_set_int(&ch1_temp_big, 0);
+                    lv_subject_set_int(&ch1_temp_small, 0);
+                    lv_subject_set_int(&ch2_temp_big, 0);
+                    lv_subject_set_int(&ch2_temp_small, 0);
+                } else {
+                    float t1 = latest.ch1; if (t1 < 0) t1 = 0;
+                    int t1_whole = (int)t1;
+                    int t1_dec = (int)((t1 - (float)t1_whole) * 10.0f + 0.0001f);
+                    if (t1_dec < 0) t1_dec = 0; else if (t1_dec > 9) t1_dec = 9;
+                    lv_subject_set_int(&ch1_temp_big, t1_whole);
+                    lv_subject_set_int(&ch1_temp_small, t1_dec);
+
+                    float t2 = latest.ch2; if (t2 < 0) t2 = 0;
+                    int t2_whole = (int)t2;
+                    int t2_dec = (int)((t2 - (float)t2_whole) * 10.0f + 0.0001f);
+                    if (t2_dec < 0) t2_dec = 0; else if (t2_dec > 9) t2_dec = 9;
+                    lv_subject_set_int(&ch2_temp_big, t2_whole);
+                    lv_subject_set_int(&ch2_temp_small, t2_dec);
+                }
+                // No semaphore give needed
+            }
+        }
+
         lv_timer_handler();
-        vTaskDelay(pdMS_TO_TICKS(5));
+        // Periodic stack watermark debug (every ~200 iterations)
+        if ((loop_counter++ & 0xFF) == 0) {
+            UBaseType_t hw = uxTaskGetStackHighWaterMark(NULL);
+            ESP_LOGD("director.stack", "high-water words=%u", (unsigned)hw);
+        }
+        // Slightly longer delay to ensure IDLE gets time (watchdog feed)
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
     vTaskDelete(NULL);
 }
 
-bool director_start(QueueHandle_t button_event_queue) {
+bool director_start(QueueHandle_t button_event_queue, QueueHandle_t sample_queue) {
     if (!button_event_queue) return false;
-    BaseType_t ok = xTaskCreate(director_task, "director", 8192, button_event_queue, 6, NULL);
+    director_args_t *args = pvPortMalloc(sizeof(director_args_t));
+    if (!args) return false;
+    args->button_q = button_event_queue;
+    args->sample_q = sample_queue;
+    BaseType_t ok = xTaskCreate(director_task, "director", 12288, args, 6, NULL);
     return ok == pdPASS;
 }
 
@@ -528,7 +594,7 @@ void page_settings(event_msg_t msg){
     if(msg.event == BUTTON_EVENT_SHORT){
         switch (msg.btn_id) {
             case 40: { // "RIGHT_BOTTOM"
-                if(activeSetting != 2){
+                if(activeSetting != 4){
                     activeSetting++;
                     lv_subject_set_int(&settingsSelect, activeSetting);
                 }

@@ -5,6 +5,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
+#include "wiseman_persist.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -28,30 +29,7 @@ static const wiseman_settings_t g_defaults = {
     .op_time_min = 0,
 };
 
-// Per-setpoint autosave debounce state (not global)
-static TimerHandle_t s_setpoint_timer = NULL; // one-shot
-static uint32_t s_setpoint_autosave_secs = WISEMAN_SETPOINT_AUTOSAVE_SECS_DEFAULT;
-
-static void setpoint_autosave_cb(TimerHandle_t xTimer) {
-    (void)xTimer;
-    if (wiseman_save_now()) {
-        ESP_LOGI(TAG, "setpoints autosaved");
-    } else {
-        ESP_LOGW(TAG, "setpoints autosave failed");
-    }
-}
-
-static void restart_setpoint_timer(void) {
-    if (s_setpoint_autosave_secs == 0) return; // disabled
-    if (!s_setpoint_timer) {
-        s_setpoint_timer = xTimerCreate("wis_sp_autosave", pdMS_TO_TICKS(1000 * s_setpoint_autosave_secs), pdFALSE, NULL, setpoint_autosave_cb);
-    }
-    if (s_setpoint_timer) {
-        xTimerStop(s_setpoint_timer, 0);
-        xTimerChangePeriod(s_setpoint_timer, pdMS_TO_TICKS(1000 * s_setpoint_autosave_secs), 0);
-        xTimerStart(s_setpoint_timer, 0);
-    }
-}
+// Legacy autosave timer removed; persistence handled by wiseman_persist background task.
 
 static esp_err_t nvs_open_rw(nvs_handle_t* out) {
     nvs_handle_t h;
@@ -71,6 +49,9 @@ static esp_err_t nvs_open_rw(nvs_handle_t* out) {
 static void apply_defaults(void) {
     memcpy(&g_settings, &g_defaults, sizeof(g_settings));
 }
+
+static wiseman_settings_t s_last_saved; // snapshot to avoid redundant writes
+static bool s_have_snapshot = false;
 
 static bool load_from_nvs(void) {
     nvs_handle_t h;
@@ -98,6 +79,11 @@ static bool load_from_nvs(void) {
 bool wiseman_save_now(void) {
     if (!s_mutex) return false;
     xSemaphoreTake(s_mutex, portMAX_DELAY);
+    // Compare with last saved snapshot; if identical, skip flash write.
+    if (s_have_snapshot && memcmp(&g_settings, &s_last_saved, sizeof(g_settings)) == 0) {
+        xSemaphoreGive(s_mutex);
+        return true; // treated as success, nothing to do
+    }
     nvs_handle_t h;
     esp_err_t open_err = nvs_open_rw(&h);
     if (open_err != ESP_OK) {
@@ -108,10 +94,12 @@ bool wiseman_save_now(void) {
     if (err == ESP_OK) err = nvs_commit(h);
     nvs_close(h);
     xSemaphoreGive(s_mutex);
-    // Manual save supersedes any pending debounced autosave -> cancel timer if running
-    if (s_setpoint_timer) {
-        xTimerStop(s_setpoint_timer, 0);
+    if (err == ESP_OK) {
+        // Update snapshot after successful commit
+        memcpy(&s_last_saved, &g_settings, sizeof(g_settings));
+        s_have_snapshot = true;
     }
+    // Background task handles dirty flag clearing
     return (err == ESP_OK);
 }
 
@@ -136,6 +124,13 @@ bool wiseman_init(void) {
         apply_defaults();
         (void)wiseman_save_now();
     }
+    else {
+        // Initialize snapshot with loaded data
+        memcpy(&s_last_saved, &g_settings, sizeof(g_settings));
+        s_have_snapshot = true;
+    }
+    // Start persistence task (idempotent)
+    wiseman_persist_start();
     // No global autosave. Setpoints have their own debounce timer.
     return true;
 }
@@ -154,13 +149,13 @@ bool wiseman_get_copy(wiseman_settings_t* out) {
 void wiseman_set_setpoint1(int16_t c) {
     if (!s_mutex) return; 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (g_settings.setpoint1_c != c) { g_settings.setpoint1_c = c; xSemaphoreGive(s_mutex); restart_setpoint_timer(); return; }
+    if (g_settings.setpoint1_c != c) { g_settings.setpoint1_c = c; xSemaphoreGive(s_mutex); wiseman_mark_dirty(); return; }
     xSemaphoreGive(s_mutex);
 }
 void wiseman_set_setpoint2(int16_t c) {
     if (!s_mutex) return; 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (g_settings.setpoint2_c != c) { g_settings.setpoint2_c = c; xSemaphoreGive(s_mutex); restart_setpoint_timer(); return; }
+    if (g_settings.setpoint2_c != c) { g_settings.setpoint2_c = c; xSemaphoreGive(s_mutex); wiseman_mark_dirty(); return; }
     xSemaphoreGive(s_mutex);
 }
 
@@ -180,10 +175,7 @@ void wiseman_set_display_brightness(uint8_t pct) {
         g_settings.display_brightness = pct;
     }
     xSemaphoreGive(s_mutex);
-    if (changed) {
-        // Persist immediately (user-driven change). Note: This increases flash wear if brightness is changed very frequently.
-        (void)wiseman_save_now();
-    }
+    if (changed) { wiseman_mark_dirty(); }
 }
 
 void wiseman_set_wifi_credentials(const char* ssid, const char* pass) {
@@ -205,8 +197,7 @@ void wiseman_set_wifi_credentials(const char* ssid, const char* pass) {
 }
 
 void wiseman_set_autosave_timeout(uint32_t seconds) {
-    s_setpoint_autosave_secs = seconds;
-    // Do not start now; only restart when setpoint changes
+    (void)seconds; // deprecated; handled by fixed debounce in persistence module
 }
 
 uint32_t wiseman_get_op_time_minutes(void) {

@@ -7,8 +7,16 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
-// Start background Fireman task (temperature polling + PID). Provide I2C request queue and display/mock queue.
+// Start background Fireman task (temperature polling + PID). Provide I2C request queue and a
+// jumbotron/display queue of length 1. Fireman uses xQueueOverwrite to always publish the latest sample.
 bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue);
+
+// Sample pushed to jumbotron/display queue each control period (temperatures Celsius).
+// If a PD failure occurs both values may be NAN.
+typedef struct {
+	double ch1;
+	double ch2;
+} fireman_sample_t;
 
 // Enable/disable heaters independently. If both disabled PID loop idles.
 void fireman_set_heater1_enabled(bool en);

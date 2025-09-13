@@ -10,6 +10,8 @@
 #include "composer/buzzer.h"
 #include "director/director.h"
 #include "wiseman/wiseman.h"
+#include "fireman/fireman.h"
+#include "freertos/semphr.h"
 
 static const char *TAG = "APP_MAIN";
 
@@ -19,6 +21,7 @@ static const char *TAG = "APP_MAIN";
 // Queues
 static QueueHandle_t g_button_queue;
 static QueueHandle_t g_i2c_queue;
+static QueueHandle_t g_fireman_sample_queue;
 
 // ---------------- Button event consumer ----------------
 // (Button events now consumed by director GUI task.)
@@ -90,10 +93,11 @@ void app_main(void) {
 	wiseman_init();
 
 	// Create queues
-	g_button_queue = xQueueCreate(32, sizeof(event_msg_t));
-	g_i2c_queue    = xQueueCreate(10, sizeof(i2c_msg_t));
+	g_button_queue          = xQueueCreate(32, sizeof(event_msg_t));
+	g_i2c_queue             = xQueueCreate(10, sizeof(i2c_msg_t));
+	g_fireman_sample_queue  = xQueueCreate(1, sizeof(fireman_sample_t)); // single-slot latest sample
 
-	if (!g_button_queue || !g_i2c_queue) {
+	if (!g_button_queue || !g_i2c_queue || !g_fireman_sample_queue) {
 		ESP_LOGE(TAG, "Failed to create queues");
 		return;
 	}
@@ -102,9 +106,10 @@ void app_main(void) {
 	inputdetect_setup(g_button_queue);
 	i2c_task_start(g_i2c_queue);
 	buzzer_init();
+	fireman_setup(g_i2c_queue, g_fireman_sample_queue);
 
 	// Start GUI director (consumes button events)
-	director_start(g_button_queue);
+	director_start(g_button_queue, g_fireman_sample_queue);
 	// Keep I2C test for now (optional)
 	// xTaskCreate(i2c_test_task, "i2c_test", 4096, NULL, 5, NULL);
 }
