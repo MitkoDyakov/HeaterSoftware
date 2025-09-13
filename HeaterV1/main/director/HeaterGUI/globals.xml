@@ -43,10 +43,15 @@
         <int name="ch2_temp_small" value="0"/>
         
         <int name="pageSelect" value="0"/>
-
+        <int name="settingsSelect" value="0"/>
         <int name="targetTemp" value="30"/>
         <string name="opTime" value="00:00"/>
         <string name="command" value="START"/>
+
+        <int name="brightness" value="75"/>
+        <int name="sleepTimer" value="30"/>
+        <string name="soundEnable" value="ON"/>
+
     </subjects>
 
     <images>

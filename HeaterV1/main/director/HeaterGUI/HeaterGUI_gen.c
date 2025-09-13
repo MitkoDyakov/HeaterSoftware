@@ -95,9 +95,13 @@ lv_subject_t ch2_active;
 lv_subject_t ch2_temp_big;
 lv_subject_t ch2_temp_small;
 lv_subject_t pageSelect;
+lv_subject_t settingsSelect;
 lv_subject_t targetTemp;
 lv_subject_t opTime;
 lv_subject_t command;
+lv_subject_t brightness;
+lv_subject_t sleepTimer;
+lv_subject_t soundEnable;
 
 /**********************
  *      MACROS
@@ -185,6 +189,7 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_subject_init_int(&ch2_temp_big, 23);
     lv_subject_init_int(&ch2_temp_small, 0);
     lv_subject_init_int(&pageSelect, 0);
+    lv_subject_init_int(&settingsSelect, 0);
     lv_subject_init_int(&targetTemp, 30);
     static char opTime_buf[UI_SUBJECT_STRING_LENGTH];
     static char opTime_prev_buf[UI_SUBJECT_STRING_LENGTH];
@@ -201,6 +206,16 @@ void HeaterGUI_init_gen(const char * asset_path)
                             command_prev_buf,
                             UI_SUBJECT_STRING_LENGTH,
                             "START"
+                          );
+    lv_subject_init_int(&brightness, 75);
+    lv_subject_init_int(&sleepTimer, 30);
+    static char soundEnable_buf[UI_SUBJECT_STRING_LENGTH];
+    static char soundEnable_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&soundEnable,
+                            soundEnable_buf,
+                            soundEnable_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "ON"
                           );
 
     /*----------------
@@ -234,9 +249,13 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "ch2_temp_big", &ch2_temp_big);
     lv_xml_register_subject(NULL, "ch2_temp_small", &ch2_temp_small);
     lv_xml_register_subject(NULL, "pageSelect", &pageSelect);
+    lv_xml_register_subject(NULL, "settingsSelect", &settingsSelect);
     lv_xml_register_subject(NULL, "targetTemp", &targetTemp);
     lv_xml_register_subject(NULL, "opTime", &opTime);
     lv_xml_register_subject(NULL, "command", &command);
+    lv_xml_register_subject(NULL, "brightness", &brightness);
+    lv_xml_register_subject(NULL, "sleepTimer", &sleepTimer);
+    lv_xml_register_subject(NULL, "soundEnable", &soundEnable);
 
     /* Register callbacks */
 #endif

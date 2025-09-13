@@ -36,6 +36,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     LV_TRACE_OBJ_CREATE("begin");
 
     static lv_style_t main;
+    static lv_style_t selected;
 
     static bool style_inited = false;
 
@@ -47,6 +48,9 @@ lv_obj_t * settings_create(lv_obj_t * parent)
         lv_style_set_pad_all(&main, 0);
         lv_style_set_border_width(&main, 0);
         lv_style_set_text_font(&main, font_ch_label_temp_small);
+
+        lv_style_init(&selected);
+        lv_style_set_text_color(&selected, RED);
 
         style_inited = true;
     }
@@ -80,6 +84,8 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_text_color(lv_label_0, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_0, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(lv_label_0, 24);
+    lv_obj_add_style(lv_label_0, &selected, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_0, &settingsSelect, LV_STATE_CHECKED, 0);
 
 
 
@@ -103,8 +109,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_3, 0, 0);
 
     lv_obj_t * lv_label_2 = lv_label_create(column_3);
-    lv_label_set_text(lv_label_2, "ON");
-    lv_obj_set_style_text_color(lv_label_2, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_2, &soundEnable, NULL);lv_obj_set_style_text_color(lv_label_2, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_2, LV_TEXT_ALIGN_CENTER, 0);
 
 
@@ -124,9 +129,11 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_t * lv_label_3 = lv_label_create(column_4);
     lv_label_set_text(lv_label_3, "•");
     lv_obj_set_style_text_font(lv_label_3, font_channel_dot, 0);
-    lv_obj_set_style_text_color(lv_label_3, RED, 0);
+    lv_obj_set_style_text_color(lv_label_3, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_3, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(lv_label_3, 24);
+    lv_obj_add_style(lv_label_3, &selected, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_3, &settingsSelect, LV_STATE_CHECKED, 1);
 
 
 
@@ -150,9 +157,56 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_6, 0, 0);
 
     lv_obj_t * lv_label_5 = lv_label_create(column_6);
-    lv_label_set_text(lv_label_5, "75%");
-    lv_obj_set_style_text_color(lv_label_5, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_5, &brightness, "%d%%");lv_obj_set_style_text_color(lv_label_5, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_5, LV_TEXT_ALIGN_CENTER, 0);
+
+
+
+
+    lv_obj_t * row_2 = row_create(column_0);
+    lv_obj_set_width(row_2, lv_pct(100));
+    lv_obj_set_height(row_2, 24);
+
+    lv_obj_t * column_7 = column_create(row_2);
+    lv_obj_set_width(column_7, 24);
+    lv_obj_set_height(column_7, lv_pct(100));
+    lv_obj_set_style_pad_right(column_7, 0, 0);
+    lv_obj_set_style_bg_opa(column_7, 0, 0);
+    lv_obj_set_style_margin_top(column_7, -14, 0);
+
+    lv_obj_t * lv_label_6 = lv_label_create(column_7);
+    lv_label_set_text(lv_label_6, "•");
+    lv_obj_set_style_text_font(lv_label_6, font_channel_dot, 0);
+    lv_obj_set_style_text_color(lv_label_6, SUBTEXT, 0);
+    lv_obj_set_style_text_align(lv_label_6, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(lv_label_6, 24);
+    lv_obj_add_style(lv_label_6, &selected, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_6, &settingsSelect, LV_STATE_CHECKED, 2);
+
+
+
+    lv_obj_t * column_8 = column_create(row_2);
+    lv_obj_set_width(column_8, 67);
+    lv_obj_set_height(column_8, lv_pct(100));
+    lv_obj_set_style_pad_right(column_8, 0, 0);
+    lv_obj_set_style_bg_opa(column_8, 0, 0);
+
+    lv_obj_t * lv_label_7 = lv_label_create(column_8);
+    lv_label_set_text(lv_label_7, "SLEEP:");
+    lv_obj_set_style_text_color(lv_label_7, SUBTEXT, 0);
+    lv_obj_set_style_text_align(lv_label_7, LV_TEXT_ALIGN_CENTER, 0);
+
+
+
+    lv_obj_t * column_9 = column_create(row_2);
+    lv_obj_set_width(column_9, 50);
+    lv_obj_set_height(column_9, lv_pct(100));
+    lv_obj_set_style_pad_right(column_9, 0, 0);
+    lv_obj_set_style_bg_opa(column_9, 0, 0);
+
+    lv_obj_t * lv_label_8 = lv_label_create(column_9);
+    lv_label_bind_text(lv_label_8, &sleepTimer, "%ds");lv_obj_set_style_text_color(lv_label_8, MAINTEXT, 0);
+    lv_obj_set_style_text_align(lv_label_8, LV_TEXT_ALIGN_CENTER, 0);
 
 
 

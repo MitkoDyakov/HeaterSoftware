@@ -5,30 +5,51 @@
 
     <styles>
         <style bg_opa="0" name="main" width="141" height="126" pad_all="0" border_width="0" text_font="font_ch_label_temp_small"/>
+        <style name="selected" text_color="#red"/>
     </styles>
      <view extends="lv_image" scrollable="false" src="info_bg" inner_align="stretch">
         <style name="main" />
         <column width="100%" height="100%" style_bg_opa="0" style_pad_top="5">
             <row width="100%" height="24">
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24"/>
+                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
+                        <style name="selected" selector="checked"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="0"/>
+                    </lv_label> 
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
                     <lv_label text="SOUND:" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column width="50" height="100%" style_pad_right="0" style_bg_opa="0">
-                     <lv_label text="ON" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text="soundEnable" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
             <row width="100%" height="24">
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#red" style_text_align="center" width="24"/>
+                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
+                        <style name="selected" selector="checked"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="1"/>
+                    </lv_label>
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
                     <lv_label text="DISPLAY:" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column width="50" height="100%" style_pad_right="0"  style_bg_opa="0">
-                     <lv_label text="75%" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text-fmt="%d%%" bind_text="brightness" style_text_color="#maintext" style_text_align="center"/>
+                </column>          
+            </row>
+            <row width="100%" height="24">
+                <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
+                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
+                        <style name="selected" selector="checked"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="2"/>
+                    </lv_label>
+                </column>
+                <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
+                    <lv_label text="SLEEP:" style_text_color="#subtext" style_text_align="center"/>
+                </column>   
+                <column width="50" height="100%" style_pad_right="0"  style_bg_opa="0">
+                     <lv_label bind_text-fmt="%ds" bind_text="sleepTimer" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
         </column>

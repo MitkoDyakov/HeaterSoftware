@@ -36,10 +36,14 @@
 //patch -p1 < ../../lvgl_translation_fix_forward.patch
 //Copilot Chat: Open in Editor Tab 
 
+// Page order must match the order we cycle through with LEFT_BOTTOM button.
+// The original switch in load_page treated case 1 as settings and case 2 as power, but
+// the enum previously had POWER before SETTINGS which prevented page_settings() from running.
+// Fix: define enum in the actual visual order: MAIN -> SETTINGS -> POWER -> INFO.
 enum {
     PAGE_MAIN = 0,
-    PAGE_POWER,
     PAGE_SETTINGS,
+    PAGE_POWER,
     PAGE_INFO,
     PAGE_COUNT
 };
@@ -68,9 +72,9 @@ static lv_obj_t * find_obj_by_name(lv_obj_t * root, const char * name) {
 static void load_page(uint8_t page_id) {
     if (!s_page_container) return; // not ready yet
     lv_obj_clean(s_page_container);
-    lv_subject_set_int(&pageSelect, (int)page_id); 
+    lv_subject_set_int(&pageSelect, (int)page_id);
     switch(page_id) {
-        case 0: {
+        case PAGE_MAIN: {
             lv_obj_t * row_4 = row_create(s_page_container);
             lv_obj_set_width(row_4, 141);
             lv_obj_set_height(row_4, 83);
@@ -85,10 +89,20 @@ static void load_page(uint8_t page_id) {
 
             lv_obj_t * control_0 = control_create(row_5, &command, &opTime);
             lv_obj_set_style_pad_all(control_0, 0, 0);
+            
+            lv_subject_copy_string(&ch1_active, " ");
+            lv_subject_copy_string(&ch2_active, " ");
         } break;
-        case 1: (void)settings_create(s_page_container); break;
-        case 2: (void)power_create(s_page_container); break;
-        case 3: (void)info_create(s_page_container); break;
+        case PAGE_SETTINGS: {
+            (void)settings_create(s_page_container);
+            lv_subject_set_int(&settingsSelect, 0); // highlight first setting
+        } break;
+        case PAGE_POWER: {
+            (void)power_create(s_page_container);
+        } break;
+        case PAGE_INFO: {
+            (void)info_create(s_page_container);
+        } break;
         default: break;
     }
 }
@@ -506,15 +520,25 @@ void page_power(event_msg_t msg){
     }
 }
 
+
+
 void page_settings(event_msg_t msg){
+    int activeSetting = lv_subject_get_int(&settingsSelect); // 0=brightness,1=setpoint1,2=setpoint2 (sound not yet implemented)
+
     if(msg.event == BUTTON_EVENT_SHORT){
         switch (msg.btn_id) {
             case 40: { // "RIGHT_BOTTOM"
-
+                if(activeSetting != 2){
+                    activeSetting++;
+                    lv_subject_set_int(&settingsSelect, activeSetting);
+                }
             } break;
 
             case 41: { // "RIGHT_TOP"
-
+                if(activeSetting != 0){
+                    activeSetting--;
+                    lv_subject_set_int(&settingsSelect, activeSetting);
+                }
             } break;
 
             case 42: { // "RIGHT_CENTER"
