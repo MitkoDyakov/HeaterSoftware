@@ -102,6 +102,19 @@ lv_subject_t command;
 lv_subject_t brightness;
 lv_subject_t sleepTimer;
 lv_subject_t soundEnable;
+lv_subject_t runTime;
+lv_subject_t swVer;
+lv_subject_t hwVer;
+lv_subject_t SN;
+lv_subject_t fiveV_available;
+lv_subject_t fiveV;
+lv_subject_t nineV_available;
+lv_subject_t nineV;
+lv_subject_t fifteenV_available;
+lv_subject_t fifteenV;
+lv_subject_t twentyV_available;
+lv_subject_t twentyV;
+lv_subject_t activePDO;
 
 /**********************
  *      MACROS
@@ -217,6 +230,40 @@ void HeaterGUI_init_gen(const char * asset_path)
                             UI_SUBJECT_STRING_LENGTH,
                             "ON"
                           );
+    lv_subject_init_int(&runTime, 0);
+    static char swVer_buf[UI_SUBJECT_STRING_LENGTH];
+    static char swVer_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&swVer,
+                            swVer_buf,
+                            swVer_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "0.1v"
+                          );
+    static char hwVer_buf[UI_SUBJECT_STRING_LENGTH];
+    static char hwVer_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&hwVer,
+                            hwVer_buf,
+                            hwVer_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "0.2v"
+                          );
+    static char SN_buf[UI_SUBJECT_STRING_LENGTH];
+    static char SN_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&SN,
+                            SN_buf,
+                            SN_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "#T001"
+                          );
+    lv_subject_init_int(&fiveV_available, 1);
+    lv_subject_init_float(&fiveV, 2.5);
+    lv_subject_init_int(&nineV_available, 1);
+    lv_subject_init_float(&nineV, 2.5);
+    lv_subject_init_int(&fifteenV_available, 1);
+    lv_subject_init_float(&fifteenV, 2.5);
+    lv_subject_init_int(&twentyV_available, 1);
+    lv_subject_init_float(&twentyV, 2.5);
+    lv_subject_init_int(&activePDO, 5);
 
     /*----------------
      * Translations
@@ -256,6 +303,19 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "brightness", &brightness);
     lv_xml_register_subject(NULL, "sleepTimer", &sleepTimer);
     lv_xml_register_subject(NULL, "soundEnable", &soundEnable);
+    lv_xml_register_subject(NULL, "runTime", &runTime);
+    lv_xml_register_subject(NULL, "swVer", &swVer);
+    lv_xml_register_subject(NULL, "hwVer", &hwVer);
+    lv_xml_register_subject(NULL, "SN", &SN);
+    lv_xml_register_subject(NULL, "fiveV_available", &fiveV_available);
+    lv_xml_register_subject(NULL, "fiveV", &fiveV);
+    lv_xml_register_subject(NULL, "nineV_available", &nineV_available);
+    lv_xml_register_subject(NULL, "nineV", &nineV);
+    lv_xml_register_subject(NULL, "fifteenV_available", &fifteenV_available);
+    lv_xml_register_subject(NULL, "fifteenV", &fifteenV);
+    lv_xml_register_subject(NULL, "twentyV_available", &twentyV_available);
+    lv_xml_register_subject(NULL, "twentyV", &twentyV);
+    lv_xml_register_subject(NULL, "activePDO", &activePDO);
 
     /* Register callbacks */
 #endif

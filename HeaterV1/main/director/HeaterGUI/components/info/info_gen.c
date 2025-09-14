@@ -86,8 +86,7 @@ lv_obj_t * info_create(lv_obj_t * parent)
     lv_obj_set_style_pad_left(column_2, 5, 0);
 
     lv_obj_t * lv_label_1 = lv_label_create(column_2);
-    lv_label_set_text(lv_label_1, "0.1v");
-    lv_obj_set_style_text_color(lv_label_1, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_1, &swVer, NULL);lv_obj_set_style_text_color(lv_label_1, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_1, LV_TEXT_ALIGN_LEFT, 0);
 
 
@@ -116,8 +115,7 @@ lv_obj_t * info_create(lv_obj_t * parent)
     lv_obj_set_style_pad_left(column_4, 5, 0);
 
     lv_obj_t * lv_label_3 = lv_label_create(column_4);
-    lv_label_set_text(lv_label_3, "2.0v");
-    lv_obj_set_style_text_color(lv_label_3, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_3, &hwVer, NULL);lv_obj_set_style_text_color(lv_label_3, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_3, LV_TEXT_ALIGN_LEFT, 0);
 
 
@@ -146,8 +144,7 @@ lv_obj_t * info_create(lv_obj_t * parent)
     lv_obj_set_style_pad_left(column_6, 5, 0);
 
     lv_obj_t * lv_label_5 = lv_label_create(column_6);
-    lv_label_set_text(lv_label_5, "T001");
-    lv_obj_set_style_text_color(lv_label_5, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_5, &SN, NULL);lv_obj_set_style_text_color(lv_label_5, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_5, LV_TEXT_ALIGN_LEFT, 0);
 
 
@@ -176,8 +173,7 @@ lv_obj_t * info_create(lv_obj_t * parent)
     lv_obj_set_style_pad_left(column_8, 5, 0);
 
     lv_obj_t * lv_label_7 = lv_label_create(column_8);
-    lv_label_set_text(lv_label_7, "1h");
-    lv_obj_set_style_text_color(lv_label_7, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_7, &runTime, "%ih");lv_obj_set_style_text_color(lv_label_7, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_7, LV_TEXT_ALIGN_LEFT, 0);
 
 

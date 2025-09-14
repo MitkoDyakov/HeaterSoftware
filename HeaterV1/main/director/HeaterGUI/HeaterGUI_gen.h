@@ -107,6 +107,19 @@ extern lv_subject_t command;
 extern lv_subject_t brightness;
 extern lv_subject_t sleepTimer;
 extern lv_subject_t soundEnable;
+extern lv_subject_t runTime;
+extern lv_subject_t swVer;
+extern lv_subject_t hwVer;
+extern lv_subject_t SN;
+extern lv_subject_t fiveV_available;
+extern lv_subject_t fiveV;
+extern lv_subject_t nineV_available;
+extern lv_subject_t nineV;
+extern lv_subject_t fifteenV_available;
+extern lv_subject_t fifteenV;
+extern lv_subject_t twentyV_available;
+extern lv_subject_t twentyV;
+extern lv_subject_t activePDO;
 
 /**********************
  * GLOBAL PROTOTYPES

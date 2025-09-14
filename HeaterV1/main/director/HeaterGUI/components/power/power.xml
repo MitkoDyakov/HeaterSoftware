@@ -5,6 +5,8 @@
 
     <styles>
         <style name="main" width="141" height="126" pad_all="0" border_width="0" text_font="font_ch_label_temp_small"/>
+        <style name="hiden" height="0"/>
+        <style name="visible" text_opa="255"/>
     </styles>
     
     <view extends="lv_image" scrollable="false" src="info_bg" inner_align="stretch">
@@ -12,28 +14,37 @@
         <column width="100%" height="100%" style_bg_opa="0">
             <row width="100%" height="24" style_margin_top="3">
                 <column height="100%" style_pad_right="0"  style_bg_opa="0" style_pad_left="10">
-                    <lv_label text="USAGE:" style_text_color="#subtext" style_text_align="center"/>
-                </column>   
-                <column height="100%" style_pad_right="0" style_bg_opa="0" style_pad_left="5">
-                     <lv_label text="30W" style_text_color="#maintext" style_text_align="left"/>
-                </column>          
+                    <lv_label text="Selected PDO" style_text_color="#subtext" style_text_align="center"/>
+                </column>       
             </row>
             <row width="100%" height="102">
         <column width="100%" height="100%" style_bg_opa="0" style_pad_left="10">
             <row width="100%" height="24">
+                <style name="hiden" selector="checked"/>
+                <bind_state_if_eq state="checked" subject="fiveV_available" ref_value="0"/>
+
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#red" style_text_align="center" width="24"/>
+                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#red" style_text_opa="0" style_text_align="center" width="24">
+                        <style name="visible" selector="checked"/>
+                        <bind_state_if_eq state="checked" subject="activePDO" ref_value="5"/>
+                    </lv_label>
                 </column>
                 <column width="30" height="100%" style_pad_right="0"  style_bg_opa="0">
                     <lv_label text="5V" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column height="100%" style_pad_right="0" style_bg_opa="0">
-                     <lv_label text="3A" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text-fmt="%.2fA" bind_text="fiveV" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
             <row width="100%" height="24">
+                <style name="hiden" selector="checked"/>
+                <bind_state_if_eq state="checked" subject="nineV_available" ref_value="0"/>
+
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24"/>
+                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#red" style_text_opa="0" style_text_align="center" width="24">
+                        <style name="visible" selector="checked"/>
+                        <bind_state_if_eq state="checked" subject="activePDO" ref_value="9"/>
+                     </lv_label>
                 </column>
                 <column width="30" height="100%" style_pad_right="0"  style_bg_opa="0">
                     <lv_label text="9V" style_text_color="#subtext" style_text_align="center"/>
@@ -42,9 +53,15 @@
                      <lv_label text="3A" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
-                        <row width="100%" height="24">
+                <row width="100%" height="24">
+                <style name="hiden" selector="checked"/>
+                <bind_state_if_eq state="checked" subject="fifteenV_available" ref_value="0"/>
+
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24"/>
+                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#red" style_text_opa="0" style_text_align="center" width="24">
+                        <style name="visible" selector="checked"/>
+                        <bind_state_if_eq state="checked" subject="activePDO" ref_value="15"/> 
+                    </lv_label>
                 </column>
                 <column width="30" height="100%" style_pad_right="0"  style_bg_opa="0">
                     <lv_label text="15V" style_text_color="#subtext" style_text_align="center"/>
@@ -54,8 +71,14 @@
                 </column>          
             </row>
             <row width="100%" height="24">
+                <style name="hiden" selector="checked"/>
+                <bind_state_if_eq state="checked" subject="twentyV_available" ref_value="0"/>
+
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24"/>
+                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#red" style_text_align="center" style_text_opa="0" width="24">
+                        <style name="visible" selector="checked"/>
+                        <bind_state_if_eq state="checked" subject="activePDO" ref_value="20"/>
+                    </lv_label>
                 </column>
                 <column width="30" height="100%" style_pad_right="0"  style_bg_opa="0">
                     <lv_label text="20V" style_text_color="#subtext" style_text_align="center"/>

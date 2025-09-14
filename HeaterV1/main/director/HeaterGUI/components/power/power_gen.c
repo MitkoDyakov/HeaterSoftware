@@ -36,6 +36,8 @@ lv_obj_t * power_create(lv_obj_t * parent)
     LV_TRACE_OBJ_CREATE("begin");
 
     static lv_style_t main;
+    static lv_style_t hiden;
+    static lv_style_t visible;
 
     static bool style_inited = false;
 
@@ -46,6 +48,12 @@ lv_obj_t * power_create(lv_obj_t * parent)
         lv_style_set_pad_all(&main, 0);
         lv_style_set_border_width(&main, 0);
         lv_style_set_text_font(&main, font_ch_label_temp_small);
+
+        lv_style_init(&hiden);
+        lv_style_set_height(&hiden, 0);
+
+        lv_style_init(&visible);
+        lv_style_set_text_opa(&visible, 255);
 
         style_inited = true;
     }
@@ -73,22 +81,9 @@ lv_obj_t * power_create(lv_obj_t * parent)
     lv_obj_set_style_pad_left(column_1, 10, 0);
 
     lv_obj_t * lv_label_0 = lv_label_create(column_1);
-    lv_label_set_text(lv_label_0, "USAGE:");
+    lv_label_set_text(lv_label_0, "Selected PDO");
     lv_obj_set_style_text_color(lv_label_0, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_0, LV_TEXT_ALIGN_CENTER, 0);
-
-
-
-    lv_obj_t * column_2 = column_create(row_0);
-    lv_obj_set_height(column_2, lv_pct(100));
-    lv_obj_set_style_pad_right(column_2, 0, 0);
-    lv_obj_set_style_bg_opa(column_2, 0, 0);
-    lv_obj_set_style_pad_left(column_2, 5, 0);
-
-    lv_obj_t * lv_label_1 = lv_label_create(column_2);
-    lv_label_set_text(lv_label_1, "30W");
-    lv_obj_set_style_text_color(lv_label_1, MAINTEXT, 0);
-    lv_obj_set_style_text_align(lv_label_1, LV_TEXT_ALIGN_LEFT, 0);
 
 
 
@@ -97,195 +92,214 @@ lv_obj_t * power_create(lv_obj_t * parent)
     lv_obj_set_width(row_1, lv_pct(100));
     lv_obj_set_height(row_1, 102);
 
-    lv_obj_t * column_3 = column_create(row_1);
-    lv_obj_set_width(column_3, lv_pct(100));
-    lv_obj_set_height(column_3, lv_pct(100));
-    lv_obj_set_style_bg_opa(column_3, 0, 0);
-    lv_obj_set_style_pad_left(column_3, 10, 0);
+    lv_obj_t * column_2 = column_create(row_1);
+    lv_obj_set_width(column_2, lv_pct(100));
+    lv_obj_set_height(column_2, lv_pct(100));
+    lv_obj_set_style_bg_opa(column_2, 0, 0);
+    lv_obj_set_style_pad_left(column_2, 10, 0);
 
-    lv_obj_t * row_2 = row_create(column_3);
+    lv_obj_t * row_2 = row_create(column_2);
     lv_obj_set_width(row_2, lv_pct(100));
     lv_obj_set_height(row_2, 24);
+    lv_obj_add_style(row_2, &hiden, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(row_2, &fiveV_available, LV_STATE_CHECKED, 0);
+
+    lv_obj_t * column_3 = column_create(row_2);
+    lv_obj_set_width(column_3, 24);
+    lv_obj_set_height(column_3, lv_pct(100));
+    lv_obj_set_style_pad_right(column_3, 0, 0);
+    lv_obj_set_style_bg_opa(column_3, 0, 0);
+    lv_obj_set_style_margin_top(column_3, -14, 0);
+
+    lv_obj_t * lv_label_1 = lv_label_create(column_3);
+    lv_label_set_text(lv_label_1, "•");
+    lv_obj_set_style_text_font(lv_label_1, font_channel_dot, 0);
+    lv_obj_set_style_text_color(lv_label_1, RED, 0);
+    lv_obj_set_style_text_opa(lv_label_1, 0, 0);
+    lv_obj_set_style_text_align(lv_label_1, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(lv_label_1, 24);
+    lv_obj_add_style(lv_label_1, &visible, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_1, &activePDO, LV_STATE_CHECKED, 5);
+
+
 
     lv_obj_t * column_4 = column_create(row_2);
-    lv_obj_set_width(column_4, 24);
+    lv_obj_set_width(column_4, 30);
     lv_obj_set_height(column_4, lv_pct(100));
     lv_obj_set_style_pad_right(column_4, 0, 0);
     lv_obj_set_style_bg_opa(column_4, 0, 0);
-    lv_obj_set_style_margin_top(column_4, -14, 0);
 
     lv_obj_t * lv_label_2 = lv_label_create(column_4);
-    lv_label_set_text(lv_label_2, "•");
-    lv_obj_set_style_text_font(lv_label_2, font_channel_dot, 0);
-    lv_obj_set_style_text_color(lv_label_2, RED, 0);
+    lv_label_set_text(lv_label_2, "5V");
+    lv_obj_set_style_text_color(lv_label_2, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_2, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(lv_label_2, 24);
 
 
 
     lv_obj_t * column_5 = column_create(row_2);
-    lv_obj_set_width(column_5, 30);
     lv_obj_set_height(column_5, lv_pct(100));
     lv_obj_set_style_pad_right(column_5, 0, 0);
     lv_obj_set_style_bg_opa(column_5, 0, 0);
 
     lv_obj_t * lv_label_3 = lv_label_create(column_5);
-    lv_label_set_text(lv_label_3, "5V");
-    lv_obj_set_style_text_color(lv_label_3, SUBTEXT, 0);
+    lv_label_bind_text(lv_label_3, &fiveV, "%.2fA");lv_obj_set_style_text_color(lv_label_3, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_3, LV_TEXT_ALIGN_CENTER, 0);
 
 
 
-    lv_obj_t * column_6 = column_create(row_2);
+
+    lv_obj_t * row_3 = row_create(column_2);
+    lv_obj_set_width(row_3, lv_pct(100));
+    lv_obj_set_height(row_3, 24);
+    lv_obj_add_style(row_3, &hiden, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(row_3, &nineV_available, LV_STATE_CHECKED, 0);
+
+    lv_obj_t * column_6 = column_create(row_3);
+    lv_obj_set_width(column_6, 24);
     lv_obj_set_height(column_6, lv_pct(100));
     lv_obj_set_style_pad_right(column_6, 0, 0);
     lv_obj_set_style_bg_opa(column_6, 0, 0);
+    lv_obj_set_style_margin_top(column_6, -14, 0);
 
     lv_obj_t * lv_label_4 = lv_label_create(column_6);
-    lv_label_set_text(lv_label_4, "3A");
-    lv_obj_set_style_text_color(lv_label_4, MAINTEXT, 0);
+    lv_label_set_text(lv_label_4, "•");
+    lv_obj_set_style_text_font(lv_label_4, font_channel_dot, 0);
+    lv_obj_set_style_text_color(lv_label_4, RED, 0);
+    lv_obj_set_style_text_opa(lv_label_4, 0, 0);
     lv_obj_set_style_text_align(lv_label_4, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(lv_label_4, 24);
+    lv_obj_add_style(lv_label_4, &visible, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_4, &activePDO, LV_STATE_CHECKED, 9);
 
 
-
-
-    lv_obj_t * row_3 = row_create(column_3);
-    lv_obj_set_width(row_3, lv_pct(100));
-    lv_obj_set_height(row_3, 24);
 
     lv_obj_t * column_7 = column_create(row_3);
-    lv_obj_set_width(column_7, 24);
+    lv_obj_set_width(column_7, 30);
     lv_obj_set_height(column_7, lv_pct(100));
     lv_obj_set_style_pad_right(column_7, 0, 0);
     lv_obj_set_style_bg_opa(column_7, 0, 0);
-    lv_obj_set_style_margin_top(column_7, -14, 0);
 
     lv_obj_t * lv_label_5 = lv_label_create(column_7);
-    lv_label_set_text(lv_label_5, "•");
-    lv_obj_set_style_text_font(lv_label_5, font_channel_dot, 0);
+    lv_label_set_text(lv_label_5, "9V");
     lv_obj_set_style_text_color(lv_label_5, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_5, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(lv_label_5, 24);
 
 
 
     lv_obj_t * column_8 = column_create(row_3);
-    lv_obj_set_width(column_8, 30);
+    lv_obj_set_width(column_8, 50);
     lv_obj_set_height(column_8, lv_pct(100));
     lv_obj_set_style_pad_right(column_8, 0, 0);
     lv_obj_set_style_bg_opa(column_8, 0, 0);
 
     lv_obj_t * lv_label_6 = lv_label_create(column_8);
-    lv_label_set_text(lv_label_6, "9V");
-    lv_obj_set_style_text_color(lv_label_6, SUBTEXT, 0);
+    lv_label_set_text(lv_label_6, "3A");
+    lv_obj_set_style_text_color(lv_label_6, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_6, LV_TEXT_ALIGN_CENTER, 0);
 
 
 
-    lv_obj_t * column_9 = column_create(row_3);
-    lv_obj_set_width(column_9, 50);
+
+    lv_obj_t * row_4 = row_create(column_2);
+    lv_obj_set_width(row_4, lv_pct(100));
+    lv_obj_set_height(row_4, 24);
+    lv_obj_add_style(row_4, &hiden, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(row_4, &fifteenV_available, LV_STATE_CHECKED, 0);
+
+    lv_obj_t * column_9 = column_create(row_4);
+    lv_obj_set_width(column_9, 24);
     lv_obj_set_height(column_9, lv_pct(100));
     lv_obj_set_style_pad_right(column_9, 0, 0);
     lv_obj_set_style_bg_opa(column_9, 0, 0);
+    lv_obj_set_style_margin_top(column_9, -14, 0);
 
     lv_obj_t * lv_label_7 = lv_label_create(column_9);
-    lv_label_set_text(lv_label_7, "3A");
-    lv_obj_set_style_text_color(lv_label_7, MAINTEXT, 0);
+    lv_label_set_text(lv_label_7, "•");
+    lv_obj_set_style_text_font(lv_label_7, font_channel_dot, 0);
+    lv_obj_set_style_text_color(lv_label_7, RED, 0);
+    lv_obj_set_style_text_opa(lv_label_7, 0, 0);
     lv_obj_set_style_text_align(lv_label_7, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(lv_label_7, 24);
+    lv_obj_add_style(lv_label_7, &visible, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_7, &activePDO, LV_STATE_CHECKED, 15);
 
 
-
-
-    lv_obj_t * row_4 = row_create(column_3);
-    lv_obj_set_width(row_4, lv_pct(100));
-    lv_obj_set_height(row_4, 24);
 
     lv_obj_t * column_10 = column_create(row_4);
-    lv_obj_set_width(column_10, 24);
+    lv_obj_set_width(column_10, 30);
     lv_obj_set_height(column_10, lv_pct(100));
     lv_obj_set_style_pad_right(column_10, 0, 0);
     lv_obj_set_style_bg_opa(column_10, 0, 0);
-    lv_obj_set_style_margin_top(column_10, -14, 0);
 
     lv_obj_t * lv_label_8 = lv_label_create(column_10);
-    lv_label_set_text(lv_label_8, "•");
-    lv_obj_set_style_text_font(lv_label_8, font_channel_dot, 0);
+    lv_label_set_text(lv_label_8, "15V");
     lv_obj_set_style_text_color(lv_label_8, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_8, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(lv_label_8, 24);
 
 
 
     lv_obj_t * column_11 = column_create(row_4);
-    lv_obj_set_width(column_11, 30);
+    lv_obj_set_width(column_11, 50);
     lv_obj_set_height(column_11, lv_pct(100));
     lv_obj_set_style_pad_right(column_11, 0, 0);
     lv_obj_set_style_bg_opa(column_11, 0, 0);
 
     lv_obj_t * lv_label_9 = lv_label_create(column_11);
-    lv_label_set_text(lv_label_9, "15V");
-    lv_obj_set_style_text_color(lv_label_9, SUBTEXT, 0);
+    lv_label_set_text(lv_label_9, "2.5A");
+    lv_obj_set_style_text_color(lv_label_9, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_9, LV_TEXT_ALIGN_CENTER, 0);
 
 
 
-    lv_obj_t * column_12 = column_create(row_4);
-    lv_obj_set_width(column_12, 50);
+
+    lv_obj_t * row_5 = row_create(column_2);
+    lv_obj_set_width(row_5, lv_pct(100));
+    lv_obj_set_height(row_5, 24);
+    lv_obj_add_style(row_5, &hiden, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(row_5, &twentyV_available, LV_STATE_CHECKED, 0);
+
+    lv_obj_t * column_12 = column_create(row_5);
+    lv_obj_set_width(column_12, 24);
     lv_obj_set_height(column_12, lv_pct(100));
     lv_obj_set_style_pad_right(column_12, 0, 0);
     lv_obj_set_style_bg_opa(column_12, 0, 0);
+    lv_obj_set_style_margin_top(column_12, -14, 0);
 
     lv_obj_t * lv_label_10 = lv_label_create(column_12);
-    lv_label_set_text(lv_label_10, "2.5A");
-    lv_obj_set_style_text_color(lv_label_10, MAINTEXT, 0);
+    lv_label_set_text(lv_label_10, "•");
+    lv_obj_set_style_text_font(lv_label_10, font_channel_dot, 0);
+    lv_obj_set_style_text_color(lv_label_10, RED, 0);
     lv_obj_set_style_text_align(lv_label_10, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_style_text_opa(lv_label_10, 0, 0);
+    lv_obj_set_width(lv_label_10, 24);
+    lv_obj_add_style(lv_label_10, &visible, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_10, &activePDO, LV_STATE_CHECKED, 20);
 
 
-
-
-    lv_obj_t * row_5 = row_create(column_3);
-    lv_obj_set_width(row_5, lv_pct(100));
-    lv_obj_set_height(row_5, 24);
 
     lv_obj_t * column_13 = column_create(row_5);
-    lv_obj_set_width(column_13, 24);
+    lv_obj_set_width(column_13, 30);
     lv_obj_set_height(column_13, lv_pct(100));
     lv_obj_set_style_pad_right(column_13, 0, 0);
     lv_obj_set_style_bg_opa(column_13, 0, 0);
-    lv_obj_set_style_margin_top(column_13, -14, 0);
 
     lv_obj_t * lv_label_11 = lv_label_create(column_13);
-    lv_label_set_text(lv_label_11, "•");
-    lv_obj_set_style_text_font(lv_label_11, font_channel_dot, 0);
+    lv_label_set_text(lv_label_11, "20V");
     lv_obj_set_style_text_color(lv_label_11, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_11, LV_TEXT_ALIGN_CENTER, 0);
-    lv_obj_set_width(lv_label_11, 24);
 
 
 
     lv_obj_t * column_14 = column_create(row_5);
-    lv_obj_set_width(column_14, 30);
+    lv_obj_set_width(column_14, 50);
     lv_obj_set_height(column_14, lv_pct(100));
     lv_obj_set_style_pad_right(column_14, 0, 0);
     lv_obj_set_style_bg_opa(column_14, 0, 0);
 
     lv_obj_t * lv_label_12 = lv_label_create(column_14);
-    lv_label_set_text(lv_label_12, "20V");
-    lv_obj_set_style_text_color(lv_label_12, SUBTEXT, 0);
+    lv_label_set_text(lv_label_12, "2.5A");
+    lv_obj_set_style_text_color(lv_label_12, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_12, LV_TEXT_ALIGN_CENTER, 0);
-
-
-
-    lv_obj_t * column_15 = column_create(row_5);
-    lv_obj_set_width(column_15, 50);
-    lv_obj_set_height(column_15, lv_pct(100));
-    lv_obj_set_style_pad_right(column_15, 0, 0);
-    lv_obj_set_style_bg_opa(column_15, 0, 0);
-
-    lv_obj_t * lv_label_13 = lv_label_create(column_15);
-    lv_label_set_text(lv_label_13, "2.5A");
-    lv_obj_set_style_text_color(lv_label_13, MAINTEXT, 0);
-    lv_obj_set_style_text_align(lv_label_13, LV_TEXT_ALIGN_CENTER, 0);
 
 
 
