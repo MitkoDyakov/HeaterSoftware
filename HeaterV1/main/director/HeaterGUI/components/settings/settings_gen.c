@@ -109,8 +109,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_3, 0, 0);
 
     lv_obj_t * lv_label_2 = lv_label_create(column_3);
-    lv_label_set_text(lv_label_2, "ON");
-    lv_obj_set_style_text_color(lv_label_2, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_2, &ch1_active, NULL);lv_obj_set_style_text_color(lv_label_2, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_2, LV_TEXT_ALIGN_CENTER, 0);
 
 
@@ -158,8 +157,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_6, 0, 0);
 
     lv_obj_t * lv_label_5 = lv_label_create(column_6);
-    lv_label_set_text(lv_label_5, "ON");
-    lv_obj_set_style_text_color(lv_label_5, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_5, &ch2_active, NULL);lv_obj_set_style_text_color(lv_label_5, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_5, LV_TEXT_ALIGN_CENTER, 0);
 
 

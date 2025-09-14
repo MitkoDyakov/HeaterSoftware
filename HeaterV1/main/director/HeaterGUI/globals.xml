@@ -34,29 +34,31 @@
         <int name="btn_right_3" value="0"/>
         <int name="btn_center" value="0"/>
 
-        <string name="ch1_active" value="•"/>
+        <!-- Main page -->       
         <int name="ch1_temp_big" value="24"/>
-        <int name="ch1_temp_small" value="9"/>
-
-        <string name="ch2_active" value="•"/>
+        <int name="ch1_temp_small" value="9"/>       
         <int name="ch2_temp_big" value="23"/>
         <int name="ch2_temp_small" value="0"/>
-        
         <int name="pageSelect" value="0"/>
-        <int name="settingsSelect" value="0"/>
         <int name="targetTemp" value="30"/>
         <string name="opTime" value="00:00"/>
         <string name="command" value="START"/>
 
+        <!-- Settigns page -->
+        <int name="settingsSelect" value="0"/>
+        <string name="ch1_active" value="ON"/>
+        <string name="ch2_active" value="ON"/>
         <int name="brightness" value="75"/>
         <int name="sleepTimer" value="30"/>
         <string name="soundEnable" value="ON"/>
 
+        <!--  Info page -->
         <int name="runTime" value="0"/>
         <string name="swVer" value="0.1v"/>
         <string name="hwVer" value="0.2v"/>
         <string name="SN" value="#T001"/>
 
+        <!--  Power page -->
         <int name="fiveV_available" value="1"/>
         <float name="fiveV" value="2.5"/>        
         <int name="nineV_available" value="1"/>
@@ -66,7 +68,6 @@
         <int name="twentyV_available" value="1"/>
         <float name="twentyV" value="2.5"/>
         <int name="activePDO" value="5" />
-
     </subjects>
 
     <images>

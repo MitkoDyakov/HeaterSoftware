@@ -8,12 +8,12 @@
           <column width="89" height="100%" style_bg_opa="0" style_pad_right="2">
             <row width="89" height="49">
               <!-- channel 1 component here -->
-              <channel channel="CH1" ch_active="ch1_active" temp_small="ch1_temp_small" temp_big="ch1_temp_big" style_pad_all="0">
+              <channel channel="CH1" ch_active=" " temp_small="ch1_temp_small" temp_big="ch1_temp_big" style_pad_all="0">
               </channel>
             </row>
             <row width="89" height="49" style_margin_top="4">
               <!-- channel 2 component here  -->
-              <channel channel="CH2" ch_active="ch2_active" temp_small="ch2_temp_small" temp_big="ch2_temp_big" style_pad_all="0">
+              <channel channel="CH2" ch_active=" " temp_small="ch2_temp_small" temp_big="ch2_temp_big" style_pad_all="0">
               </channel>
             </row>
             <row width="89" height="20" style_margin_top="4">
