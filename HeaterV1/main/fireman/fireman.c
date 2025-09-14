@@ -1,4 +1,5 @@
 // Heater (Fireman) control with PID loop and periodic temperature polling.
+#include "fireman.h"  // public API (must come first for struct declarations)
 #include <stdint.h>
 #include <stdbool.h>
 #include <math.h>
@@ -42,18 +43,13 @@ typedef struct {
     float proportionalGain;      /* Kp */
     float integralGain;          /* Ki */
     float derivativeGain;        /* Kd */
-
     float integralAccumulator;   /* ∑ error · dt */
     float previousError;         /* error[k‑1]   */
-
-    float outputMinimumPercent;  /* e.g. 0   */
+    float outputMinimumPercent;  /* e.g. 0 */
     float outputMaximumPercent;  /* e.g. 100 */
 } PID_Controller;
 
-typedef struct {
-    double ch1;
-    double ch2;
-} fireman_sample_t; // what we'd send to jumbotron
+// Types defined in header (fireman_sample_t, fireman_pd_caps_t)
 
 static volatile int setpoint1_c  = 0; /* Desired temperature ch1 (modified by other tasks) */
 static volatile int setpoint2_c  = 0; /* Desired temperature ch2 (modified by other tasks) */
@@ -66,6 +62,8 @@ static volatile bool heater2_enabled = false;  /* Cross-task flag */
 /* PD management: track current fixed voltage (5,9,15,20). PoR default is 5V */
 static int current_pd_voltage = 5;
 static bool prev_any_enabled = false;        /* Detect transitions to/from active heating */
+
+// ===== USB-PD capability snapshot =====
 
 static void fireman_task(void *arg);
 
@@ -295,5 +293,7 @@ static void fireman_task(void *arg) {
         }
     }
 }
+
+int fireman_get_current_pd_voltage(void) { return current_pd_voltage; }
 
 // Legacy interactive PID test removed in favor of autonomous task.

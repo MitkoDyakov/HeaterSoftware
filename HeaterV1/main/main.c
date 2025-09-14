@@ -108,8 +108,8 @@ void app_main(void) {
 	buzzer_init();
 	fireman_setup(g_i2c_queue, g_fireman_sample_queue);
 
-	// Start GUI director (consumes button events)
-	director_start(g_button_queue, g_fireman_sample_queue);
+	// Start GUI director (consumes button events, samples, requests PD caps over I2C)
+	director_start(g_button_queue, g_fireman_sample_queue, g_i2c_queue);
 	// Keep I2C test for now (optional)
 	// xTaskCreate(i2c_test_task, "i2c_test", 4096, NULL, 5, NULL);
 }

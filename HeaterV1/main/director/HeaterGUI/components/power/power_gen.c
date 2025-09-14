@@ -37,6 +37,7 @@ lv_obj_t * power_create(lv_obj_t * parent)
 
     static lv_style_t main;
     static lv_style_t hiden;
+    static lv_style_t show;
     static lv_style_t visible;
 
     static bool style_inited = false;
@@ -51,6 +52,9 @@ lv_obj_t * power_create(lv_obj_t * parent)
 
         lv_style_init(&hiden);
         lv_style_set_height(&hiden, 0);
+
+        lv_style_init(&show);
+        lv_style_set_height(&show, lv_pct(100));
 
         lv_style_init(&visible);
         lv_style_set_text_opa(&visible, 255);
@@ -193,8 +197,7 @@ lv_obj_t * power_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_8, 0, 0);
 
     lv_obj_t * lv_label_6 = lv_label_create(column_8);
-    lv_label_set_text(lv_label_6, "3A");
-    lv_obj_set_style_text_color(lv_label_6, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_6, &nineV, NULL);lv_obj_set_style_text_color(lv_label_6, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_6, LV_TEXT_ALIGN_CENTER, 0);
 
 
@@ -245,8 +248,7 @@ lv_obj_t * power_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_11, 0, 0);
 
     lv_obj_t * lv_label_9 = lv_label_create(column_11);
-    lv_label_set_text(lv_label_9, "2.5A");
-    lv_obj_set_style_text_color(lv_label_9, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_9, &fifteenV, NULL);lv_obj_set_style_text_color(lv_label_9, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_9, LV_TEXT_ALIGN_CENTER, 0);
 
 
@@ -297,9 +299,30 @@ lv_obj_t * power_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_14, 0, 0);
 
     lv_obj_t * lv_label_12 = lv_label_create(column_14);
-    lv_label_set_text(lv_label_12, "2.5A");
-    lv_obj_set_style_text_color(lv_label_12, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_12, &twentyV, NULL);lv_obj_set_style_text_color(lv_label_12, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_12, LV_TEXT_ALIGN_CENTER, 0);
+
+
+
+
+    lv_obj_t * row_6 = row_create(column_2);
+    lv_obj_set_width(row_6, lv_pct(100));
+    lv_obj_set_height(row_6, 0);
+    lv_obj_add_style(row_6, &show, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(row_6, &activePDO, LV_STATE_CHECKED, 0);
+
+    lv_obj_t * column_15 = column_create(row_6);
+    lv_obj_set_width(column_15, lv_pct(100));
+    lv_obj_set_height(column_15, lv_pct(100));
+    lv_obj_set_style_pad_right(column_15, 0, 0);
+    lv_obj_set_style_pad_top(column_15, 28, 0);
+    lv_obj_set_style_bg_opa(column_15, 0, 0);
+
+    lv_obj_t * lv_label_13 = lv_label_create(column_15);
+    lv_label_set_text(lv_label_13, "NOT A PD CHARGER");
+    lv_obj_set_style_text_font(lv_label_13, font_ch_label_temp_small, 0);
+    lv_obj_set_style_text_color(lv_label_13, RED, 0);
+    lv_obj_set_style_text_align(lv_label_13, LV_TEXT_ALIGN_CENTER, 0);
 
 
 

@@ -255,25 +255,25 @@ void HeaterGUI_init_gen(const char * asset_path)
                             UI_SUBJECT_STRING_LENGTH,
                             "#T001"
                           );
-    lv_subject_init_int(&fiveV_available, 1);
+    lv_subject_init_int(&fiveV_available, 0);
     static char fiveV_buf[UI_SUBJECT_STRING_LENGTH];
     static char fiveV_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&fiveV,
                             fiveV_buf,
                             fiveV_prev_buf,
                             UI_SUBJECT_STRING_LENGTH,
-                            "2.5A"
+                            "3.5A"
                           );
-    lv_subject_init_int(&nineV_available, 1);
+    lv_subject_init_int(&nineV_available, 0);
     static char nineV_buf[UI_SUBJECT_STRING_LENGTH];
     static char nineV_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&nineV,
                             nineV_buf,
                             nineV_prev_buf,
                             UI_SUBJECT_STRING_LENGTH,
-                            "2.5A"
+                            "3.5A"
                           );
-    lv_subject_init_int(&fifteenV_available, 1);
+    lv_subject_init_int(&fifteenV_available, 0);
     static char fifteenV_buf[UI_SUBJECT_STRING_LENGTH];
     static char fifteenV_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&fifteenV,
@@ -282,7 +282,7 @@ void HeaterGUI_init_gen(const char * asset_path)
                             UI_SUBJECT_STRING_LENGTH,
                             "2.5A"
                           );
-    lv_subject_init_int(&twentyV_available, 1);
+    lv_subject_init_int(&twentyV_available, 0);
     static char twentyV_buf[UI_SUBJECT_STRING_LENGTH];
     static char twentyV_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&twentyV,
@@ -291,7 +291,7 @@ void HeaterGUI_init_gen(const char * asset_path)
                             UI_SUBJECT_STRING_LENGTH,
                             "2.5A"
                           );
-    lv_subject_init_int(&activePDO, 5);
+    lv_subject_init_int(&activePDO, 0);
 
     /*----------------
      * Translations

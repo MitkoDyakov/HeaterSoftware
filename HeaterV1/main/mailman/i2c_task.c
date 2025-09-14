@@ -9,6 +9,7 @@
 #include "ap33772s.h"
 #include "ads7142.h"
 #include "TMP110.h"
+#include "esp_log.h"
 
 #define I2C_MASTER_PORT      0
 #define I2C_MASTER_FREQ_HZ   400000
@@ -30,6 +31,19 @@ static void handle_pd_set_pdo(i2c_msg_t *msg) {
     // Set PDO using DMA, send result to response queue
     bool ret = setFixPDO(msg->data.pd_set.set_voltage);
     xQueueSend(msg->response_queue, &ret, 0);
+}
+
+static void handle_pd_get_caps(i2c_msg_t *msg) {
+    i2c_pd_caps_resp_t caps = {0};
+    ap33772s_caps_t raw;
+    ap33772s_get_caps(&raw);
+    ESP_LOGD("pd", "handle_pd_get_caps raw five=%d nine=%d fifteen=%d twenty=%d",
+             raw.fiveV, raw.nineV, raw.fifteenV, raw.twentyV);
+    caps.have5 = raw.fiveV; caps.cur5 = raw.cur5;
+    caps.have9 = raw.nineV; caps.cur9 = raw.cur9;
+    caps.have15 = raw.fifteenV; caps.cur15 = raw.cur15;
+    caps.have20 = raw.twentyV; caps.cur20 = raw.cur20;
+    xQueueSend(msg->response_queue, &caps, 0);
 }
 
 static void handle_adc_read_single_ch(i2c_msg_t *msg) {
@@ -97,6 +111,9 @@ static void i2c_task(void *pvParameters) {
             switch (msg.type) {
                 case I2C_MSG_PD_SET_PDO:
                     handle_pd_set_pdo(&msg);
+                    break;
+                case I2C_MSG_PD_GET_CAPS:
+                    handle_pd_get_caps(&msg);
                     break;
                 case I2C_MSG_ADC_READ_SINGLE_CH:
                     handle_adc_read_single_ch(&msg);

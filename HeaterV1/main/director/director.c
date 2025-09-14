@@ -30,6 +30,7 @@
 #include "director.h"
 #include "switchboard/user_input.h"
 #include "fireman/fireman.h"
+#include "mailman/i2c_task.h"
 #include "wiseman/wiseman.h"
 #include "wiseman/wiseman_persist.h"
 #include "driver/ledc.h"
@@ -93,8 +94,8 @@ static void load_page(uint8_t page_id) {
             lv_obj_t * control_0 = control_create(row_5, &command, &opTime);
             lv_obj_set_style_pad_all(control_0, 0, 0);
             
-            lv_subject_copy_string(&ch1_active, " ");
-            lv_subject_copy_string(&ch2_active, " ");
+            lv_subject_copy_string(&ch1_active, "ON");
+            lv_subject_copy_string(&ch2_active, "ON");
         } break;
         case PAGE_SETTINGS: {
             (void)settings_create(s_page_container);
@@ -138,6 +139,7 @@ static uint8_t timer_hh = 0;
 
 static QueueHandle_t g_button_queue = NULL; /* Provided by main (switchboard) */
 static QueueHandle_t g_jumbo_queue  = NULL; /* Fireman sample queue */
+static QueueHandle_t g_i2c_queue    = NULL; /* I2C request queue */
 
 // ---- tick helpers (wrap-safe) ----
 // (Removed legacy debounce / emit code: switchboard handles input.)
@@ -368,11 +370,11 @@ static void director_task(void *arg)
     // start with home page
     load_page(PAGE_MAIN);
 
-    TickType_t last_sample_poll = xTaskGetTickCount();
-    // Director is now ready to receive first sample
-    // (Overwrite queue model: no readiness semaphore needed)
+    // Director is now ready to receive first sample (overwrite queue model)
 
     uint32_t loop_counter = 0;
+    bool pd_caps_applied = false; // set once UI updated
+    uint32_t pd_caps_attempts = 0; // retry counter
     while (1) {
         // Drain button events here (replaces vConsoleTask)
         event_msg_t msg;
@@ -403,6 +405,62 @@ static void director_task(void *arg)
                 }
             }
         }
+        // One-time PD capabilities: request over I2C
+        if (!pd_caps_applied && g_i2c_queue) {
+            // Retry every ~500ms (loop delay ~10ms -> attempt when (loop_counter % 50)==0)
+            if ((loop_counter % 50) == 0) {
+                ++pd_caps_attempts;
+                ESP_LOGD("director.pd", "Attempting PD caps request #%lu", (unsigned long)pd_caps_attempts);
+                i2c_msg_t pd_msg = {0};
+                pd_msg.type = I2C_MSG_PD_GET_CAPS;
+                QueueHandle_t resp_q = xQueueCreate(1, sizeof(i2c_pd_caps_resp_t));
+                if (!resp_q) {
+                    ESP_LOGW("director.pd", "alloc resp_q failed (attempt %lu)", (unsigned long)pd_caps_attempts);
+                } else {
+                    pd_msg.response_queue = resp_q;
+                    if (xQueueSend(g_i2c_queue, &pd_msg, 0) != pdTRUE) {
+                        ESP_LOGW("director.pd", "send I2C_MSG_PD_GET_CAPS failed (attempt %lu)", (unsigned long)pd_caps_attempts);
+                    } else {
+                        i2c_pd_caps_resp_t caps;
+                        if (xQueueReceive(resp_q, &caps, pdMS_TO_TICKS(60)) == pdTRUE) {
+                            lv_subject_set_int(&fiveV_available,    caps.have5  ? 1 : 0);
+                            lv_subject_set_int(&nineV_available,    caps.have9  ? 1 : 0);
+                            lv_subject_set_int(&fifteenV_available, caps.have15 ? 1 : 0);
+                            lv_subject_set_int(&twentyV_available,  caps.have20 ? 1 : 0);
+                            int current_active = lv_subject_get_int(&activePDO);
+                            if (!(caps.have5 || caps.have9 || caps.have15 || caps.have20)) {
+                                // No fixed PDOs detected -> ensure activePDO is 0
+                                if (current_active != 0) {
+                                    lv_subject_set_int(&activePDO, 0);
+                                }
+                            } else if (current_active == 0) {
+                                // At least one fixed PDO present and none selected yet -> default to 5V if available
+                                if (caps.have5) {
+                                    lv_subject_set_int(&activePDO, 5);
+                                } else if (caps.have9) {
+                                    lv_subject_set_int(&activePDO, 9);
+                                } else if (caps.have15) {
+                                    lv_subject_set_int(&activePDO, 15);
+                                } else if (caps.have20) {
+                                    lv_subject_set_int(&activePDO, 20);
+                                }
+                            }
+                            char buf[10];
+                            if (caps.have5)   { snprintf(buf, sizeof(buf), "%.2fA", caps.cur5);   lv_subject_copy_string(&fiveV,    buf);} else lv_subject_copy_string(&fiveV,    "--");
+                            if (caps.have9)   { snprintf(buf, sizeof(buf), "%.2fA", caps.cur9);   lv_subject_copy_string(&nineV,    buf);} else lv_subject_copy_string(&nineV,    "--");
+                            if (caps.have15)  { snprintf(buf, sizeof(buf), "%.2fA", caps.cur15);  lv_subject_copy_string(&fifteenV, buf);} else lv_subject_copy_string(&fifteenV, "--");
+                            if (caps.have20)  { snprintf(buf, sizeof(buf), "%.2fA", caps.cur20);  lv_subject_copy_string(&twentyV,  buf);} else lv_subject_copy_string(&twentyV,  "--");
+                            ESP_LOGI("director.pd", "PD caps applied after %lu attempt(s)", (unsigned long)pd_caps_attempts);
+                            pd_caps_applied = true;
+                        } else {
+                            ESP_LOGD("director.pd", "no caps yet (attempt %lu timeout)", (unsigned long)pd_caps_attempts);
+                        }
+                    }
+                    vQueueDelete(resp_q);
+                }
+            }
+        }
+
         // Consume at most one fireman sample per loop (prevents lengthy drains -> WDT risk)
         if (g_jumbo_queue) {
             fireman_sample_t latest;
@@ -444,12 +502,14 @@ static void director_task(void *arg)
     vTaskDelete(NULL);
 }
 
-bool director_start(QueueHandle_t button_event_queue, QueueHandle_t sample_queue) {
+bool director_start(QueueHandle_t button_event_queue, QueueHandle_t sample_queue, QueueHandle_t i2c_queue) {
     if (!button_event_queue) return false;
     director_args_t *args = pvPortMalloc(sizeof(director_args_t));
     if (!args) return false;
     args->button_q = button_event_queue;
     args->sample_q = sample_queue;
+    // We overload args struct (extend) or rely on globals (set here)
+    g_i2c_queue = i2c_queue;
     BaseType_t ok = xTaskCreate(director_task, "director", 12288, args, 6, NULL);
     return ok == pdPASS;
 }

@@ -13,10 +13,13 @@ bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue);
 
 // Sample pushed to jumbotron/display queue each control period (temperatures Celsius).
 // If a PD failure occurs both values may be NAN.
-typedef struct {
-	double ch1;
-	double ch2;
+typedef struct fireman_sample_s {
+    double ch1;
+    double ch2;
 } fireman_sample_t;
+
+// Current active PD voltage (5,9,15,20) as last successfully requested (exposed for UI).
+int fireman_get_current_pd_voltage(void);
 
 // Enable/disable heaters independently. If both disabled PID loop idles.
 void fireman_set_heater1_enabled(bool en);

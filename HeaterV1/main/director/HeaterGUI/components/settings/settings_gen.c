@@ -50,7 +50,8 @@ lv_obj_t * settings_create(lv_obj_t * parent)
         lv_style_set_text_font(&main, font_ch_label_temp_small);
 
         lv_style_init(&selected);
-        lv_style_set_text_color(&selected, RED);
+        lv_style_set_text_color(&selected, SUBTEXT);
+        lv_style_set_text_opa(&selected, 255);
 
         style_inited = true;
     }
@@ -80,6 +81,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
 
     lv_obj_t * lv_label_0 = lv_label_create(column_1);
     lv_label_set_text(lv_label_0, "•");
+    lv_obj_set_style_text_opa(lv_label_0, 0, 0);
     lv_obj_set_style_text_font(lv_label_0, font_channel_dot, 0);
     lv_obj_set_style_text_color(lv_label_0, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_0, LV_TEXT_ALIGN_CENTER, 0);
@@ -128,6 +130,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
 
     lv_obj_t * lv_label_3 = lv_label_create(column_4);
     lv_label_set_text(lv_label_3, "•");
+    lv_obj_set_style_text_opa(lv_label_3, 0, 0);
     lv_obj_set_style_text_font(lv_label_3, font_channel_dot, 0);
     lv_obj_set_style_text_color(lv_label_3, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_3, LV_TEXT_ALIGN_CENTER, 0);
@@ -176,6 +179,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
 
     lv_obj_t * lv_label_6 = lv_label_create(column_7);
     lv_label_set_text(lv_label_6, "•");
+    lv_obj_set_style_text_opa(lv_label_6, 0, 0);
     lv_obj_set_style_text_font(lv_label_6, font_channel_dot, 0);
     lv_obj_set_style_text_color(lv_label_6, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_6, LV_TEXT_ALIGN_CENTER, 0);
@@ -224,6 +228,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
 
     lv_obj_t * lv_label_9 = lv_label_create(column_10);
     lv_label_set_text(lv_label_9, "•");
+    lv_obj_set_style_text_opa(lv_label_9, 0, 0);
     lv_obj_set_style_text_font(lv_label_9, font_channel_dot, 0);
     lv_obj_set_style_text_color(lv_label_9, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_9, LV_TEXT_ALIGN_CENTER, 0);
@@ -272,6 +277,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
 
     lv_obj_t * lv_label_12 = lv_label_create(column_13);
     lv_label_set_text(lv_label_12, "•");
+    lv_obj_set_style_text_opa(lv_label_12, 0, 0);
     lv_obj_set_style_text_font(lv_label_12, font_channel_dot, 0);
     lv_obj_set_style_text_color(lv_label_12, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_12, LV_TEXT_ALIGN_CENTER, 0);

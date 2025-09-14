@@ -18,10 +18,19 @@ typedef struct {
 
 typedef enum {
     I2C_MSG_PD_SET_PDO,     // Set PDO (voltage/current) on PD controller
+    I2C_MSG_PD_GET_CAPS,    // Get fixed PDO capability flags/currents
     I2C_MSG_ADC_READ_SINGLE_CH,  // Read ADC channel (chan1 or chan2)
     I2C_MSG_ADC_READ_BOTH,  // Read both ADC channels
     I2C_MSG_READ_AMBIENT_TEMP,  // Read ambient temperature
 } i2c_msg_type_t;
+
+// PD capability response (currents Amps, placeholder until decoded)
+typedef struct {
+    bool have5;  float cur5;
+    bool have9;  float cur9;
+    bool have15; float cur15;
+    bool have20; float cur20;
+} i2c_pd_caps_resp_t;
 
 typedef struct {
     i2c_msg_type_t type;

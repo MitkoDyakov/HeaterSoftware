@@ -5,14 +5,14 @@
 
     <styles>
         <style bg_opa="0" name="main" width="141" height="126" pad_all="0" border_width="0" text_font="font_ch_label_temp_small"/>
-        <style name="selected" text_color="#red"/>
+        <style name="selected" text_color="#subtext" text_opa="255"/>
     </styles>
      <view extends="lv_image" scrollable="false" src="info_bg" inner_align="stretch">
         <style name="main" />
         <column width="100%" height="100%" style_bg_opa="0" style_pad_top="3">
             <row width="100%" height="24">
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
+                    <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
                         <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="0"/>
                     </lv_label>
@@ -26,7 +26,7 @@
             </row>
             <row width="100%" height="24">
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
+                    <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
                         <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="1"/>
                     </lv_label>
@@ -40,7 +40,7 @@
             </row>
             <row width="100%" height="24">
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
+                    <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
                         <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="2"/>
                     </lv_label> 
@@ -54,7 +54,7 @@
             </row>
             <row width="100%" height="24">
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
+                    <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
                         <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="3"/>
                     </lv_label>
@@ -68,7 +68,7 @@
             </row>
             <row width="100%" height="24">
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
-                    <lv_label text="•" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
+                    <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
                         <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="4"/>
                     </lv_label>

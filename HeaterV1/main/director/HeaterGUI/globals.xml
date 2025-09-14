@@ -59,15 +59,15 @@
         <string name="SN" value="#T001"/>
 
         <!--  Power page -->
-        <int name="fiveV_available" value="1"/>
-        <string name="fiveV" value="3.5A"/>        
-        <int name="nineV_available" value="1"/>
+        <int name="fiveV_available" value="0"/>
+        <string name="fiveV" value="3.5A"/>      
+        <int name="nineV_available" value="0"/>
         <string name="nineV" value="3.5A"/>
-        <int name="fifteenV_available" value="1"/>
+        <int name="fifteenV_available" value="0"/>
         <string name="fifteenV" value="2.5A"/>
-        <int name="twentyV_available" value="1"/>
-        <string name="twentyV" value="2.5A"/>
-        <int name="activePDO" value="5" />
+        <int name="twentyV_available" value="0"/>
+        <string name="twentyV" value="2.5A"/>        
+        <int name="activePDO" value="0" />
     </subjects>
 
     <images>
