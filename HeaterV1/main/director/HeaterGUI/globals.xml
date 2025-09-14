@@ -60,13 +60,13 @@
 
         <!--  Power page -->
         <int name="fiveV_available" value="1"/>
-        <float name="fiveV" value="2.5"/>        
+        <string name="fiveV" value="3.5A"/>        
         <int name="nineV_available" value="1"/>
-        <float name="nineV" value="2.5"/>
+        <string name="nineV" value="3.5A"/>
         <int name="fifteenV_available" value="1"/>
-        <float name="fifteenV" value="2.5"/>
+        <string name="fifteenV" value="2.5A"/>
         <int name="twentyV_available" value="1"/>
-        <float name="twentyV" value="2.5"/>
+        <string name="twentyV" value="2.5A"/>
         <int name="activePDO" value="5" />
     </subjects>
 

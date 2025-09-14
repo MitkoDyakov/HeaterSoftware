@@ -256,13 +256,41 @@ void HeaterGUI_init_gen(const char * asset_path)
                             "#T001"
                           );
     lv_subject_init_int(&fiveV_available, 1);
-    lv_subject_init_float(&fiveV, 2.5);
+    static char fiveV_buf[UI_SUBJECT_STRING_LENGTH];
+    static char fiveV_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&fiveV,
+                            fiveV_buf,
+                            fiveV_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "2.5A"
+                          );
     lv_subject_init_int(&nineV_available, 1);
-    lv_subject_init_float(&nineV, 2.5);
+    static char nineV_buf[UI_SUBJECT_STRING_LENGTH];
+    static char nineV_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&nineV,
+                            nineV_buf,
+                            nineV_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "2.5A"
+                          );
     lv_subject_init_int(&fifteenV_available, 1);
-    lv_subject_init_float(&fifteenV, 2.5);
+    static char fifteenV_buf[UI_SUBJECT_STRING_LENGTH];
+    static char fifteenV_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&fifteenV,
+                            fifteenV_buf,
+                            fifteenV_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "2.5A"
+                          );
     lv_subject_init_int(&twentyV_available, 1);
-    lv_subject_init_float(&twentyV, 2.5);
+    static char twentyV_buf[UI_SUBJECT_STRING_LENGTH];
+    static char twentyV_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&twentyV,
+                            twentyV_buf,
+                            twentyV_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "2.5A"
+                          );
     lv_subject_init_int(&activePDO, 5);
 
     /*----------------

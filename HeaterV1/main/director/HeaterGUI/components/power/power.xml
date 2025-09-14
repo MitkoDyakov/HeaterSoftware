@@ -33,7 +33,7 @@
                     <lv_label text="5V" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column height="100%" style_pad_right="0" style_bg_opa="0">
-                     <lv_label bind_text-fmt="%.2fA" bind_text="fiveV" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text="fiveV" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
             <row width="100%" height="24">
@@ -50,7 +50,7 @@
                     <lv_label text="9V" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column width="50" height="100%" style_pad_right="0"  style_bg_opa="0">
-                     <lv_label text="3A" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text="nineV" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
                 <row width="100%" height="24">
@@ -67,7 +67,7 @@
                     <lv_label text="15V" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column width="50" height="100%" style_pad_right="0" style_bg_opa="0">
-                     <lv_label text="2.5A" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text="fifteenV" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
             <row width="100%" height="24">
@@ -84,7 +84,7 @@
                     <lv_label text="20V" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column width="50" height="100%" style_pad_right="0"  style_bg_opa="0">
-                     <lv_label text="2.5A" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text="twentyV" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
         </column>

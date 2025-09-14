@@ -142,7 +142,7 @@ lv_obj_t * power_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_5, 0, 0);
 
     lv_obj_t * lv_label_3 = lv_label_create(column_5);
-    lv_label_bind_text(lv_label_3, &fiveV, "%.2fA");lv_obj_set_style_text_color(lv_label_3, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_3, &fiveV, NULL);lv_obj_set_style_text_color(lv_label_3, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_3, LV_TEXT_ALIGN_CENTER, 0);
 
 
