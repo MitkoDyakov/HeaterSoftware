@@ -2,6 +2,7 @@
 #define I2C_TASK_H
 
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include <stdint.h>
@@ -46,5 +47,6 @@ typedef struct {
 } i2c_msg_t;
 
 void i2c_task_start(QueueHandle_t queue);
+SemaphoreHandle_t i2c_get_ready_semaphore(void);
 
 #endif // I2C_TASK_H

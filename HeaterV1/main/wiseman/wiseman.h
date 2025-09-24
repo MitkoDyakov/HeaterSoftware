@@ -7,7 +7,16 @@ extern "C" {
 #endif
 
 // Versioning for settings struct; bump when format changes.
-#define WISEMAN_SETTINGS_VERSION 2
+#define WISEMAN_SETTINGS_VERSION 3
+
+// Disable all persistence (NVS writes and background task) for now.
+// Re-enable later by commenting this line and building with proper tests.
+// #define WISEMAN_DISABLE_PERSIST 1
+
+// Optional: define WISEMAN_PERSIST_SYNC to skip background task and
+// perform a (debounced) immediate save from the calling context when
+// settings change. Not enabled by default.
+// #define WISEMAN_PERSIST_SYNC 1
 
 // Auto-save debounce for setpoints (seconds) default
 #ifndef WISEMAN_SETPOINT_AUTOSAVE_SECS_DEFAULT
@@ -27,6 +36,7 @@ typedef struct {
     char wifi_ssid[33];       // null-terminated
     char wifi_pass[65];       // null-terminated
     uint32_t op_time_min;     // accumulated operating time (minutes)
+    uint16_t sleep_timeout_s; // display dim timeout in seconds (0 = never)
     // Add more as required
 } wiseman_settings_t;
 
@@ -45,9 +55,14 @@ void wiseman_add_op_time_minutes(uint32_t minutes); // add (saturating) and opti
 // Mutators: mark-dirty on change and schedule auto-save
 void wiseman_set_setpoint1(int16_t c);
 void wiseman_set_setpoint2(int16_t c);
+// Update both setpoints in a single mutex lock (one dirty mark if any changed)
+void wiseman_set_dual_setpoints(int16_t sp1, int16_t sp2);
 void wiseman_set_sound_enabled(bool en);
 void wiseman_set_display_brightness(uint8_t pct);
 void wiseman_set_wifi_credentials(const char* ssid, const char* pass);
+// New mutators
+void wiseman_set_sleep_timeout_seconds(uint16_t seconds);
+void wiseman_set_heaters_enabled(bool ch1, bool ch2);
 
 // Manual save: persist current settings immediately
 bool wiseman_save_now(void);

@@ -57,11 +57,11 @@ lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t 
     lv_obj_add_style(lv_image_0, &main, 0);
 
     lv_obj_t * lv_label_0 = lv_label_create(lv_image_0);
-    lv_label_bind_text(lv_label_0, temp_big, "%i°");lv_obj_set_style_text_font(lv_label_0, font_ch_temp_big, 0);
+    lv_label_bind_text(lv_label_0, temp_big, "%i°");lv_obj_set_style_text_font(lv_label_0, MIDDLE_DIGITS, 0);
     lv_obj_set_style_text_align(lv_label_0, LV_TEXT_ALIGN_RIGHT, 0);
     lv_obj_set_style_text_color(lv_label_0, MAINTEXT, 0);
     lv_obj_set_x(lv_label_0, 26);
-    lv_obj_set_y(lv_label_0, -2);
+    lv_obj_set_y(lv_label_0, 8);
     lv_obj_set_width(lv_label_0, 54);
     lv_obj_set_height(lv_label_0, 54);
 
@@ -75,10 +75,10 @@ lv_obj_t * channel_create(lv_obj_t * parent, const char * channel, lv_subject_t 
 
 
     lv_obj_t * lv_label_2 = lv_label_create(lv_image_0);
-    lv_label_bind_text(lv_label_2, temp_small, ".%i");lv_obj_set_style_text_font(lv_label_2, font_ch_label_temp_small, 0);
+    lv_label_bind_text(lv_label_2, temp_small, ".%i");lv_obj_set_style_text_font(lv_label_2, SMALL_DIGITS, 0);
     lv_obj_set_style_text_color(lv_label_2, MAINTEXT, 0);
     lv_obj_set_x(lv_label_2, 69);
-    lv_obj_set_y(lv_label_2, 20);
+    lv_obj_set_y(lv_label_2, 25);
 
 
     lv_obj_t * lv_label_3 = lv_label_create(lv_image_0);

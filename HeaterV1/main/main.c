@@ -105,11 +105,35 @@ void app_main(void) {
 	// Start subsystems
 	inputdetect_setup(g_button_queue);
 	i2c_task_start(g_i2c_queue);
+	// Wait (up to 1s) for I2C task to finish device setup so PD caps are ready before director
+	{
+		SemaphoreHandle_t sem = i2c_get_ready_semaphore();
+		if (sem) {
+			if (xSemaphoreTake(sem, pdMS_TO_TICKS(1000)) != pdTRUE) {
+				ESP_LOGW(TAG, "I2C readiness timeout; proceeding anyway");
+			} else {
+				ESP_LOGI(TAG, "I2C subsystem ready (devices initialized)");
+			}
+		}
+	}
 	buzzer_init();
 	fireman_setup(g_i2c_queue, g_fireman_sample_queue);
 
-	// Start GUI director (consumes button events, samples, requests PD caps over I2C)
-	director_start(g_button_queue, g_fireman_sample_queue, g_i2c_queue);
+	// Fetch PD capabilities once after I2C ready, pass snapshot to director
+	ap33772s_caps_t pd_caps = {0};
+	i2c_msg_t pd_msg = {0};
+	pd_msg.type = I2C_MSG_PD_GET_CAPS;
+	i2c_pd_caps_resp_t caps_resp = {0};
+	if (i2c_send_and_wait(&pd_msg, &caps_resp, sizeof(caps_resp), pdMS_TO_TICKS(500)) == ESP_OK) {
+		pd_caps.fiveV = caps_resp.have5; pd_caps.cur5 = caps_resp.cur5;
+		pd_caps.nineV = caps_resp.have9; pd_caps.cur9 = caps_resp.cur9;
+		pd_caps.fifteenV = caps_resp.have15; pd_caps.cur15 = caps_resp.cur15;
+		pd_caps.twentyV = caps_resp.have20; pd_caps.cur20 = caps_resp.cur20;
+		ESP_LOGI(TAG, "PD caps snapshot acquired: 5=%d 9=%d 15=%d 20=%d", caps_resp.have5, caps_resp.have9, caps_resp.have15, caps_resp.have20);
+	} else {
+		ESP_LOGW(TAG, "Failed to get PD caps snapshot (will start director with none)");
+	}
+	director_start(g_button_queue, g_fireman_sample_queue, &pd_caps);
 	// Keep I2C test for now (optional)
 	// xTaskCreate(i2c_test_task, "i2c_test", 4096, NULL, 5, NULL);
 }

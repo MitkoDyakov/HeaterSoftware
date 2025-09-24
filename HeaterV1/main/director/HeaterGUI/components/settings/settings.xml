@@ -18,10 +18,10 @@
                     </lv_label>
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
-                    <lv_label text="CH1:" style_text_color="#subtext" style_text_align="center"/>
+                    <lv_label text="TEMP:" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column width="50" height="100%" style_pad_right="0"  style_bg_opa="0">
-                     <lv_label bind_text="ch1_active" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text-fmt="%i°" bind_text="default_temp" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
             <row width="100%" height="24">
@@ -32,10 +32,10 @@
                     </lv_label>
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
-                    <lv_label text="CH2:" style_text_color="#subtext" style_text_align="center"/>
+                    <lv_label text="ENABLE:" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column width="50" height="100%" style_pad_right="0"  style_bg_opa="0">
-                     <lv_label bind_text="ch2_active" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text="activeCh" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
             <row width="100%" height="24">

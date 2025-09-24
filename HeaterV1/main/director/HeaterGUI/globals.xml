@@ -46,8 +46,8 @@
 
         <!-- Settigns page -->
         <int name="settingsSelect" value="0"/>
-        <string name="ch1_active" value="ON"/>
-        <string name="ch2_active" value="ON"/>
+        <int name="default_temp" value="30"/>
+        <string name="activeCh" value="CH1/2"/>
         <int name="brightness" value="75"/>
         <int name="sleepTimer" value="30"/>
         <string name="soundEnable" value="ON"/>

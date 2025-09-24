@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/semphr.h"
 #include <string.h>
 #include "pinout.h"
 
@@ -18,6 +19,9 @@
 static i2c_master_dev_handle_t ads7142_handle = NULL;
 static i2c_master_dev_handle_t ap33772s_handle = NULL;
 static i2c_master_dev_handle_t TMP110_handle = NULL;
+
+// Readiness semaphore signaled after all device setups complete
+static SemaphoreHandle_t g_i2c_ready_sem = NULL;
 
 // Removed PD_GET_PDOS: discovery/config happens at startup per design
 
@@ -105,6 +109,11 @@ static void i2c_task(void *pvParameters) {
     ADS7142_setup(ads7142_handle);
     TMP110_setup(TMP110_handle);
 
+    // Signal readiness (give only once)
+    if (g_i2c_ready_sem) {
+        xSemaphoreGive(g_i2c_ready_sem);
+    }
+
     // --- Main loop: handle runtime requests ---
     while (1) {
         if (xQueueReceive(queue, &msg, portMAX_DELAY)) {
@@ -132,5 +141,12 @@ static void i2c_task(void *pvParameters) {
 }
 
 void i2c_task_start(QueueHandle_t queue) {
+    if (!g_i2c_ready_sem) {
+        g_i2c_ready_sem = xSemaphoreCreateBinary();
+    }
     xTaskCreate(i2c_task, "i2c_task", 4096, (void *)queue, 10, NULL);
+}
+
+SemaphoreHandle_t i2c_get_ready_semaphore(void){
+    return g_i2c_ready_sem;
 }

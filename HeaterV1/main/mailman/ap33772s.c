@@ -10,23 +10,32 @@ void parsePDOlist();
 #define I2C_TOOL_TIMEOUT_VALUE_MS (50u)
 i2c_master_dev_handle_t pdDevice;
 
-// Result structure for returning both ADC channels
+// Generic fixed PDO entry (extensible for additional voltages or types later)
+// NOTE: Legacy pdo_reg_t removed; higher layers now derive availability via ap33772s_get_caps()
+// and internal snapshot (g_caps_snapshot).
 typedef struct {
-    bool fiveV;
-    uint8_t fiveV_index; // 0=5V, 1=9V, 2=15V, 3=20V
-    uint16_t fiveV_max_current; // in mA
-    bool nineV;  
-    uint8_t nineV_index; // 0=5V, 1=9V, 2=15V, 3=20V
-    uint16_t nineV_max_current; // in mA
-    bool fifteenV;
-    uint8_t fifteenV_index; // 0=5V, 1=9V, 2=15V, 3=20V
-    uint16_t fifteenV_max_current; // in mA
-    bool twentyV;
-    uint8_t twentyV_index; // 0=5V, 1=9V, 2=15V, 3=20V
-    uint16_t twentyV_max_current; // in mA
-} pdo_reg_t;
+  uint16_t mv;        // Millivolts (5000, 9000, ...)
+  uint16_t max_mA;    // Representative upper bound current
+  uint8_t  pdo_pos;   // 1-based position in source capability list (0 = absent)
+  uint8_t  type;      // 0=fixed, others reserved
+  uint16_t raw16;     // Original 16-bit field for diagnostics
+} ap33772s_fixed_pdo_t;
 
-pdo_reg_t pdo_reg = {0};
+#define AP33772S_MAX_FIXED_TRACK 8
+typedef struct {
+  ap33772s_fixed_pdo_t entries[AP33772S_MAX_FIXED_TRACK];
+  uint8_t count; // number of valid entries
+} ap33772s_caps_snapshot_t;
+
+static ap33772s_caps_snapshot_t g_caps_snapshot = {0}; // updated on AP33772S_UpdatePdoList()
+
+// Helper lookups for canonical voltages (5/9/15/20V) to preserve existing outward behavior
+static const ap33772s_fixed_pdo_t* find_voltage(uint16_t mv){
+  for(uint8_t i=0;i<g_caps_snapshot.count;i++){
+    if(g_caps_snapshot.entries[i].mv == mv) return &g_caps_snapshot.entries[i];
+  }
+  return NULL;
+}
 
 SRC_SPRandEPR_PDO_Fields SRC_SPRandEPRpdoArray[MAX_PDO_ENTRIES] = {0}; 
 
@@ -35,37 +44,42 @@ bool AP33772S_setup(i2c_master_dev_handle_t devHandler)
   pdDevice = devHandler;
   ESP_LOGI("pd", "AP33772S setup start");
   AP33772S_UpdatePdoList();
-  ESP_LOGI("pd", "AP33772S setup complete five=%d nine=%d fifteen=%d twenty=%d",
-           pdo_reg.fiveV, pdo_reg.nineV, pdo_reg.fifteenV, pdo_reg.twentyV);
+  const ap33772s_fixed_pdo_t *p5 = find_voltage(5000);
+  const ap33772s_fixed_pdo_t *p9 = find_voltage(9000);
+  const ap33772s_fixed_pdo_t *p15 = find_voltage(15000);
+  const ap33772s_fixed_pdo_t *p20 = find_voltage(20000);
+  ESP_LOGI("pd", "AP33772S setup complete five=%d nine=%d fifteen=%d twenty=%d (tracked=%u)",
+           p5?1:0, p9?1:0, p15?1:0, p20?1:0, g_caps_snapshot.count);
   return true;
 }
 
 void AP33772S_UpdatePdoList(void)
 {
-    uint8_t reg_addr = CMD_SRCPDO;
-    uint8_t rx_data[26] = {0};
+  uint8_t reg_addr = CMD_SRCPDO;
+  uint8_t rx_data[26] = {0};
 
-    esp_err_t ret = i2c_master_transmit_receive(pdDevice, &reg_addr, 1, rx_data, 26, I2C_TOOL_TIMEOUT_VALUE_MS);
+  esp_err_t ret = i2c_master_transmit_receive(pdDevice, &reg_addr, 1, rx_data, 26, I2C_TOOL_TIMEOUT_VALUE_MS);
   ESP_LOGI("pd", "Read SRCPDO ret=%d", (int)ret);
+
   if (ret == ESP_OK) {
-        for (uint8_t i = 0; i < 26; i += 2) {
-            // Store the bytes in the array of structs
-            uint8_t pdoIndex = (i / 2);  // Calculate the PDO index
-            SRC_SPRandEPRpdoArray[pdoIndex].byte0 = rx_data[i];
-            SRC_SPRandEPRpdoArray[pdoIndex].byte1 = rx_data[i + 1];
-        }
-        parsePDOlist();
+    for (uint8_t i = 0; i < 26; i += 2) {
+      // Store the bytes in the array of structs
+      uint8_t pdoIndex = (i / 2);  // Calculate the PDO index
+      SRC_SPRandEPRpdoArray[pdoIndex].byte0 = rx_data[i];
+      SRC_SPRandEPRpdoArray[pdoIndex].byte1 = rx_data[i + 1];
+    }
+    parsePDOlist();
   } else {
     ESP_LOGW("pd", "Failed to read PDO list ret=%d", (int)ret);
-    }
+  }
 }
 
 void parsePDOlist()
 {
   ESP_LOGI("pd", "Parsing PDO list (MAX_PDO_ENTRIES=%d)...", MAX_PDO_ENTRIES);
 
-  // Reset previous results
-  pdo_reg = (pdo_reg_t){0};
+  // Reset previous results (snapshot)
+  g_caps_snapshot = (ap33772s_caps_snapshot_t){0};
 
   for (int i = 0; i < MAX_PDO_ENTRIES; i++) {
     uint8_t b0 = SRC_SPRandEPRpdoArray[i].byte0;
@@ -110,88 +124,79 @@ void parsePDOlist()
   ESP_LOGI("pd", "PDO idx=%d raw=0x%04X mv=%lu mA~%lu codeV=%u codeI=%u", i, raw,
        (unsigned long)millivolts, (unsigned long)milliAmps, voltage_code, current_code);
 
-    switch (millivolts) {
-      case 5000:
-        pdo_reg.fiveV = true;
-        pdo_reg.fiveV_index = i + 1; // 1-based index for RDO
-        pdo_reg.fiveV_max_current = (uint16_t)milliAmps;
-        break;
-      case 9000:
-        pdo_reg.nineV = true;
-        pdo_reg.nineV_index = i + 1;
-        pdo_reg.nineV_max_current = (uint16_t)milliAmps;
-        break;
-      case 15000:
-        pdo_reg.fifteenV = true;
-        pdo_reg.fifteenV_index = i + 1;
-        pdo_reg.fifteenV_max_current = (uint16_t)milliAmps;
-        break;
-      case 20000:
-        pdo_reg.twentyV = true;
-        pdo_reg.twentyV_index = i + 1;
-        pdo_reg.twentyV_max_current = (uint16_t)milliAmps;
-        break;
-      default:
-        ESP_LOGD("pd", "PDO idx=%d unsupported fixed voltage %lu mV (rawCode=%u)",
-                 i, (unsigned long)millivolts, voltage_code);
-        break;
+    // Add to generic snapshot if room
+    if (g_caps_snapshot.count < AP33772S_MAX_FIXED_TRACK) {
+      ap33772s_fixed_pdo_t *slot = &g_caps_snapshot.entries[g_caps_snapshot.count++];
+      slot->mv = (uint16_t)millivolts;
+      slot->max_mA = (uint16_t)milliAmps;
+      slot->pdo_pos = (uint8_t)(i + 1);
+      slot->type = 0; // fixed
+      slot->raw16 = raw;
     }
+
+    // Non-canonical voltages are simply skipped for legacy view; still present in snapshot
   }
 
-  ESP_LOGI("pd", "PDO parse done five=%d(%umA) nine=%d(%umA) fifteen=%d(%umA) twenty=%d(%umA)",
-           pdo_reg.fiveV, pdo_reg.fiveV_max_current,
-           pdo_reg.nineV, pdo_reg.nineV_max_current,
-           pdo_reg.fifteenV, pdo_reg.fifteenV_max_current,
-           pdo_reg.twentyV, pdo_reg.twentyV_max_current);
+  const ap33772s_fixed_pdo_t *p5 = find_voltage(5000);
+  const ap33772s_fixed_pdo_t *p9 = find_voltage(9000);
+  const ap33772s_fixed_pdo_t *p15 = find_voltage(15000);
+  const ap33772s_fixed_pdo_t *p20 = find_voltage(20000);
+  ESP_LOGI("pd", "PDO parse done fixedCaps=%u five=%d(%u) nine=%d(%u) fifteen=%d(%u) twenty=%d(%u)",
+           g_caps_snapshot.count,
+           p5?1:0, p5? p5->max_mA:0,
+           p9?1:0, p9? p9->max_mA:0,
+           p15?1:0, p15? p15->max_mA:0,
+           p20?1:0, p20? p20->max_mA:0);
 }
 
 
 bool setFixPDO(uint8_t voltage)
 {
-  static uint8_t writeBuf[WRITE_BUFF_LENGTH];
-  RDO_DATA_T rdoData;
-  rdoData.byte0 = 0x00;
-  rdoData.byte1 = 0x00;
-  rdoData.REQMSG_Fields.CURRENT_SEL = 0xf;
-  rdoData.REQMSG_Fields.VOLTAGE_SEL = 0xff;
-
+  uint16_t target_mv = 0;
   switch(voltage){
-    case 5:
-      if(pdo_reg.fiveV){
-        rdoData.REQMSG_Fields.PDO_INDEX = pdo_reg.fiveV_index;
-      }
-      break;
-    case 9:
-      if(pdo_reg.nineV){
-        rdoData.REQMSG_Fields.PDO_INDEX = pdo_reg.nineV_index;
-      }
-      break;
-    case 15:
-      if(pdo_reg.fifteenV){
-        rdoData.REQMSG_Fields.PDO_INDEX = pdo_reg.fifteenV_index; 
-      }
-      break;
-    case 20:
-      if(pdo_reg.twentyV){
-        rdoData.REQMSG_Fields.PDO_INDEX = pdo_reg.twentyV_index; 
-      }
-      break;
-    default:
-      return false; // Invalid voltage
+    case 5: target_mv = 5000; break;
+    case 9: target_mv = 9000; break;
+    case 15: target_mv = 15000; break;
+    case 20: target_mv = 20000; break;
+    default: return false; // unsupported voltage request
   }
-
+  const ap33772s_fixed_pdo_t *p = find_voltage(target_mv);
+  if(!p || p->pdo_pos == 0){
+    ESP_LOGW("pd", "Requested %uV PDO not available", (unsigned)voltage);
+    return false;
+  }
+  static uint8_t writeBuf[WRITE_BUFF_LENGTH];
+  RDO_DATA_T rdoData = {0};
+  rdoData.REQMSG_Fields.CURRENT_SEL = 0xf; // max
+  rdoData.REQMSG_Fields.VOLTAGE_SEL = 0xff; // auto / as per device semantics
+  rdoData.REQMSG_Fields.PDO_INDEX = p->pdo_pos; // 1-based
   writeBuf[0] = CMD_PD_REQMSG;
-  writeBuf[1] = rdoData.byte0;  // Store the upper 8 bits
-  writeBuf[2] = rdoData.byte1;  // Store the lower 8 bits
+  writeBuf[1] = rdoData.byte0;
+  writeBuf[2] = rdoData.byte1;
   ESP_ERROR_CHECK(i2c_master_transmit(pdDevice, writeBuf, 3, -1));
-
+  ESP_LOGI("pd", "Requested fixed PDO %uV (index=%u, max=%umA)", (unsigned)voltage, p->pdo_pos, p->max_mA);
   return true;
 }
 
 void ap33772s_get_caps(ap33772s_caps_t *out) {
   if (!out) return;
-  out->fiveV = pdo_reg.fiveV; out->cur5 = pdo_reg.fiveV ? (float)pdo_reg.fiveV_max_current / 1000.0f : 0.0f;
-  out->nineV = pdo_reg.nineV; out->cur9 = pdo_reg.nineV ? (float)pdo_reg.nineV_max_current / 1000.0f : 0.0f;
-  out->fifteenV = pdo_reg.fifteenV; out->cur15 = pdo_reg.fifteenV ? (float)pdo_reg.fifteenV_max_current / 1000.0f : 0.0f;
-  out->twentyV = pdo_reg.twentyV; out->cur20 = pdo_reg.twentyV ? (float)pdo_reg.twentyV_max_current / 1000.0f : 0.0f;
+  const ap33772s_fixed_pdo_t *p5 = find_voltage(5000);
+  const ap33772s_fixed_pdo_t *p9 = find_voltage(9000);
+  const ap33772s_fixed_pdo_t *p15 = find_voltage(15000);
+  const ap33772s_fixed_pdo_t *p20 = find_voltage(20000);
+  out->fiveV = p5 != NULL; out->cur5 = p5 ? (float)p5->max_mA / 1000.0f : 0.0f;
+  out->nineV = p9 != NULL; out->cur9 = p9 ? (float)p9->max_mA / 1000.0f : 0.0f;
+  out->fifteenV = p15 != NULL; out->cur15 = p15 ? (float)p15->max_mA / 1000.0f : 0.0f;
+  out->twentyV = p20 != NULL; out->cur20 = p20 ? (float)p20->max_mA / 1000.0f : 0.0f;
+}
+
+// OPTIONAL: helper to find highest current PDO at/above a target millivoltage (not yet part of public API)
+static const ap33772s_fixed_pdo_t* find_best_fixed(uint16_t target_mv){
+  const ap33772s_fixed_pdo_t *best = NULL;
+  for (uint8_t i = 0; i < g_caps_snapshot.count; ++i){
+    const ap33772s_fixed_pdo_t *e = &g_caps_snapshot.entries[i];
+    if (e->mv < target_mv) continue;
+    if (!best || e->max_mA > best->max_mA) best = e;
+  }
+  return best;
 }

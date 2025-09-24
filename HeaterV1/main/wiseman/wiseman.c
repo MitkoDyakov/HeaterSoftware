@@ -27,6 +27,7 @@ static const wiseman_settings_t g_defaults = {
     .wifi_ssid = "",
     .wifi_pass = "",
     .op_time_min = 0,
+    .sleep_timeout_s = 30,
 };
 
 // Legacy autosave timer removed; persistence handled by wiseman_persist background task.
@@ -78,60 +79,83 @@ static bool load_from_nvs(void) {
 
 bool wiseman_save_now(void) {
     if (!s_mutex) return false;
+    // Copy current settings under lock, then perform flash I/O without holding mutex.
+    wiseman_settings_t local_copy;
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    // Compare with last saved snapshot; if identical, skip flash write.
     if (s_have_snapshot && memcmp(&g_settings, &s_last_saved, sizeof(g_settings)) == 0) {
         xSemaphoreGive(s_mutex);
-        return true; // treated as success, nothing to do
+        return true; // nothing changed
     }
+    memcpy(&local_copy, &g_settings, sizeof(local_copy));
+    xSemaphoreGive(s_mutex);
+
     nvs_handle_t h;
     esp_err_t open_err = nvs_open_rw(&h);
     if (open_err != ESP_OK) {
-        xSemaphoreGive(s_mutex); // avoid deadlock on early failure
         return false;
     }
-    esp_err_t err = nvs_set_blob(h, WISEMAN_KEY, &g_settings, sizeof(g_settings));
+    TickType_t t0 = xTaskGetTickCount();
+    esp_err_t err = nvs_set_blob(h, WISEMAN_KEY, &local_copy, sizeof(local_copy));
     if (err == ESP_OK) err = nvs_commit(h);
+    TickType_t t1 = xTaskGetTickCount();
     nvs_close(h);
-    xSemaphoreGive(s_mutex);
     if (err == ESP_OK) {
-        // Update snapshot after successful commit
-        memcpy(&s_last_saved, &g_settings, sizeof(g_settings));
+        xSemaphoreTake(s_mutex, portMAX_DELAY);
+        memcpy(&s_last_saved, &local_copy, sizeof(s_last_saved));
         s_have_snapshot = true;
+        xSemaphoreGive(s_mutex);
+        uint32_t ms = (uint32_t)pdTICKS_TO_MS(t1 - t0);
+        if (ms > 30) {
+            ESP_LOGW(TAG, "NVS commit latency %u ms", (unsigned)ms);
+        } else {
+            ESP_LOGD(TAG, "NVS commit %u ms", (unsigned)ms);
+        }
     }
-    // Background task handles dirty flag clearing
     return (err == ESP_OK);
 }
 
 bool wiseman_reset_to_defaults(void) {
     apply_defaults();
+#ifdef WISEMAN_DISABLE_PERSIST
+    return true;
+#else
     return wiseman_save_now();
+#endif
 }
 
 bool wiseman_init(void) {
+#ifdef WISEMAN_DISABLE_PERSIST
+    ESP_LOGW(TAG, "Wiseman persistence DISABLED (test mode)");
+#else
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(err);
+#endif
 
     if (!s_mutex) s_mutex = xSemaphoreCreateMutex();
     configASSERT(s_mutex);
 
-    if (!load_from_nvs()) {
-        ESP_LOGI(TAG, "loading defaults");
+    #ifdef WISEMAN_DISABLE_PERSIST
         apply_defaults();
-        (void)wiseman_save_now();
-    }
-    else {
-        // Initialize snapshot with loaded data
-        memcpy(&s_last_saved, &g_settings, sizeof(g_settings));
-        s_have_snapshot = true;
-    }
-    // Start persistence task (idempotent)
-    wiseman_persist_start();
-    // No global autosave. Setpoints have their own debounce timer.
+        s_have_snapshot = false; // skip snapshot logic
+    #else
+        if (!load_from_nvs()) {
+            ESP_LOGI(TAG, "loading defaults");
+            apply_defaults();
+            (void)wiseman_save_now();
+        }
+        else {
+            // Initialize snapshot with loaded data
+            memcpy(&s_last_saved, &g_settings, sizeof(g_settings));
+            s_have_snapshot = true;
+        }
+        // Start persistence task (idempotent)
+        wiseman_persist_start();
+    #endif
+    // No global autosave. Setpoints have their own debounce timer (except disabled in test).
     return true;
 }
 
@@ -149,14 +173,57 @@ bool wiseman_get_copy(wiseman_settings_t* out) {
 void wiseman_set_setpoint1(int16_t c) {
     if (!s_mutex) return; 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (g_settings.setpoint1_c != c) { g_settings.setpoint1_c = c; xSemaphoreGive(s_mutex); wiseman_mark_dirty(); return; }
+    bool changed = (g_settings.setpoint1_c != c);
+    if (changed) g_settings.setpoint1_c = c;
     xSemaphoreGive(s_mutex);
+#ifndef WISEMAN_DISABLE_PERSIST
+    if (changed) wiseman_mark_dirty();
+#endif
+}
+
+void wiseman_set_sleep_timeout_seconds(uint16_t seconds) {
+    if (!s_mutex) return;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    bool changed = (g_settings.sleep_timeout_s != seconds);
+    if (changed) g_settings.sleep_timeout_s = seconds;
+    xSemaphoreGive(s_mutex);
+#ifndef WISEMAN_DISABLE_PERSIST
+    if (changed) wiseman_mark_dirty();
+#endif
+}
+
+void wiseman_set_heaters_enabled(bool ch1, bool ch2) {
+    if (!s_mutex) return;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    bool changed = false;
+    if (g_settings.heater1_enabled != ch1) { g_settings.heater1_enabled = ch1; changed = true; }
+    if (g_settings.heater2_enabled != ch2) { g_settings.heater2_enabled = ch2; changed = true; }
+    xSemaphoreGive(s_mutex);
+#ifndef WISEMAN_DISABLE_PERSIST
+    if (changed) wiseman_mark_dirty();
+#endif
 }
 void wiseman_set_setpoint2(int16_t c) {
     if (!s_mutex) return; 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
-    if (g_settings.setpoint2_c != c) { g_settings.setpoint2_c = c; xSemaphoreGive(s_mutex); wiseman_mark_dirty(); return; }
+    bool changed = (g_settings.setpoint2_c != c);
+    if (changed) g_settings.setpoint2_c = c;
     xSemaphoreGive(s_mutex);
+#ifndef WISEMAN_DISABLE_PERSIST
+    if (changed) wiseman_mark_dirty();
+#endif
+}
+
+void wiseman_set_dual_setpoints(int16_t sp1, int16_t sp2) {
+    if (!s_mutex) return;
+    bool changed = false;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (g_settings.setpoint1_c != sp1) { g_settings.setpoint1_c = sp1; changed = true; }
+    if (g_settings.setpoint2_c != sp2) { g_settings.setpoint2_c = sp2; changed = true; }
+    xSemaphoreGive(s_mutex);
+#ifndef WISEMAN_DISABLE_PERSIST
+    if (changed) wiseman_mark_dirty();
+#endif
 }
 
 void wiseman_set_sound_enabled(bool en) {
