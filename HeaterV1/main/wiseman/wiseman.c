@@ -235,6 +235,7 @@ void wiseman_set_sound_enabled(bool en) {
 
 void wiseman_set_display_brightness(uint8_t pct) {
     if (pct > 100) pct = 100;
+    if (pct < 5) pct = 5; // enforce minimum operational brightness
     if (!s_mutex) return; 
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     bool changed = (g_settings.display_brightness != pct);
@@ -283,4 +284,8 @@ void wiseman_add_op_time_minutes(uint32_t minutes) {
     if (sum > 0xFFFFFFFFu) sum = 0xFFFFFFFFu; // saturate
     g_settings.op_time_min = (uint32_t)sum;
     xSemaphoreGive(s_mutex);
+    // Mark dirty so that updated operating time is saved. This is called at most once per minute.
+#ifndef WISEMAN_DISABLE_PERSIST
+    wiseman_mark_dirty();
+#endif
 }

@@ -332,6 +332,10 @@ void lvgl_init_display(void)
     uint8_t initial_brightness = 100; // fallback
     const wiseman_settings_t *ws = wiseman_get();
     if (ws) initial_brightness = ws->display_brightness;
+    if (initial_brightness < 5) { // enforce minimum so user cannot soft-brick UI visibility
+        initial_brightness = 5;
+        wiseman_set_display_brightness(initial_brightness);
+    }
     backlight_pwm_init(initial_brightness);
 
     // Create LVGL display
@@ -386,7 +390,7 @@ static void settings_blink_cb(lv_timer_t *t) {
 // Apply the user's configured brightness to the hardware backlight
 static void display_apply_user_brightness(void) {
     int b = lv_subject_get_int(&brightness);
-    if (b < 0) b = 0; else if (b > 100) b = 100;
+    if (b < 5) b = 5; else if (b > 100) b = 100; // user brightness minimum
     backlight_set_brightness((uint8_t)b);
 }
 
@@ -397,7 +401,7 @@ static void sleep_check_cb(lv_timer_t *t) {
     if (st <= 0) {
         // Sleep disabled; ensure we're awake
         if (s_display_sleeping) {
-            display_apply_user_brightness();
+            display_apply_user_brightness(); // already clamps to >=5
             s_display_sleeping = false;
         }
         return;
@@ -471,10 +475,11 @@ static void director_task(void *arg)
     // (Input scanning handled by switchboard module; we just consume events.)
     const wiseman_settings_t *ws_cur = wiseman_get();
     if (ws_cur) {
-        backlight_set_brightness(ws_cur->display_brightness);
+    uint8_t b = ws_cur->display_brightness < 5 ? 5 : ws_cur->display_brightness;
+    backlight_set_brightness(b);
         lv_subject_set_int(&targetTemp, ws_cur->setpoint1_c);
         lv_subject_set_int(&default_temp, ws_cur->setpoint1_c);
-        lv_subject_set_int(&brightness, ws_cur->display_brightness);
+    lv_subject_set_int(&brightness, (int)(ws_cur->display_brightness < 5 ? 5 : ws_cur->display_brightness));
         lv_subject_set_int(&sleepTimer, ws_cur->sleep_timeout_s);
         lv_subject_copy_string(&soundEnable, ws_cur->sound_enabled ? "ON" : "OFF");
         if (ws_cur->heater1_enabled && ws_cur->heater2_enabled) {
@@ -591,6 +596,15 @@ static void director_task(void *arg)
         }
 
         lv_timer_handler();
+        // Update runtime display approximately once per loop (10ms delay below) but only when minute count changes.
+        static uint32_t s_last_runtime_min = 0xFFFFFFFFu; // force first update
+        uint32_t cur_min = wiseman_get_op_time_minutes();
+        if (cur_min != s_last_runtime_min) {
+            s_last_runtime_min = cur_min;
+            // UI expects hours (integer). Convert minutes -> hours (truncate)
+            uint32_t hours = cur_min / 60u;
+            lv_subject_set_int(&runTime, (int)hours);
+        }
         // Periodic stack watermark debug (every ~200 iterations)
         if ((loop_counter++ & 0xFF) == 0) {
             UBaseType_t hw = uxTaskGetStackHighWaterMark(NULL);
@@ -616,16 +630,56 @@ bool director_start(QueueHandle_t button_event_queue, QueueHandle_t sample_queue
 void page_main(event_msg_t msg){
     if (msg.event == BUTTON_EVENT_SHORT) {
         switch (msg.btn_id) {
-            case 40: { // "RIGHT_BOTTOM"
+            case 40: { // "RIGHT_BOTTOM" (START/STOP)
                 opStat = !opStat;
                 if (opStat) {
                     lv_subject_copy_string(&command, "STOP");
                     lv_timer_resume(ui_clock_timer);
+                    // START pressed: configure heaters
+                    int target = lv_subject_get_int(&targetTemp);
+                    if (target < 0) target = 0; else if (target > 60) target = 60;
+                    // Apply the same target to both internal PID controllers for now
+                    fireman_set_setpoints(target, target);
+                    // Determine which channels to enable based on activeCh selection
+                    const char* chsel = lv_subject_get_string(&activeCh);
+                    bool en1 = false, en2 = false;
+                    if (chsel) {
+                        if (strcmp(chsel, "CH1") == 0) { en1 = true; en2 = false; }
+                        else if (strcmp(chsel, "CH2") == 0) { en1 = false; en2 = true; }
+                        else { en1 = true; en2 = true; } // "CH1/2" or fallback
+                    } else { en1 = true; en2 = true; }
+                    fireman_set_heater1_enabled(en1);
+                    fireman_set_heater2_enabled(en2);
+                    // Request higher PD voltage (20V preferred, else 15V) if available snapshot indicates support
+                    ap33772s_caps_t caps_snapshot = g_initial_pd_caps; // startup snapshot
+                    uint8_t desired = 0;
+                    if (caps_snapshot.twentyV) desired = 20; else if (caps_snapshot.fifteenV) desired = 15; else desired = 0;
+                    if (desired) {
+                        bool ok = fireman_request_pd_voltage(desired);
+                        // If 20V failed and we tried it first, optionally fall back to 15V if available
+                        if (!ok && desired == 20 && g_initial_pd_caps.fifteenV) {
+                            ok = fireman_request_pd_voltage(15);
+                            if (ok) desired = 15; // reflect fallback voltage
+                        }
+                        ESP_LOGI("director.pd", "START PD request -> target=%uV result=%d", (unsigned)desired, (int)ok);
+                        if (ok) lv_subject_set_int(&activePDO, desired);
+                    } else {
+                        ESP_LOGI("director.pd", "START no higher PD voltage available (stay at 5V)");
+                    }
+                    ESP_LOGI("director.heaters", "Heaters START target=%dC ch1=%d ch2=%d", target, en1, en2);
                 } else {
                     lv_subject_copy_string(&command, "START");
                     timer_ss = timer_mm = timer_hh = 0;
                     lv_subject_copy_string(&opTime, "00:00");
                     lv_timer_pause(ui_clock_timer);
+                    // STOP pressed: disable both heaters (setpoints retained for next start)
+                    fireman_set_heater1_enabled(false);
+                    fireman_set_heater2_enabled(false);
+                    // Revert PD voltage to 5V (ignore failure)
+                    bool ok = fireman_request_pd_voltage(5);
+                    ESP_LOGI("director.pd", "STOP PD request 5V result=%d", (int)ok);
+                    if (ok) lv_subject_set_int(&activePDO, 5);
+                    ESP_LOGI("director.heaters", "Heaters STOP (disabled all)");
                 }
             } break;
 
@@ -633,6 +687,11 @@ void page_main(event_msg_t msg){
                 int t = lv_subject_get_int(&targetTemp) + 1;
                 if (t < 61) {
                     lv_subject_set_int(&targetTemp, t);
+                    // Live update while running
+                    if (opStat) {
+                        int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                        fireman_set_setpoints(clamped, clamped);
+                    }
                 }
             } break;
 
@@ -640,6 +699,11 @@ void page_main(event_msg_t msg){
                 int t = lv_subject_get_int(&targetTemp) - 1;
                 if (t > -1) {
                     lv_subject_set_int(&targetTemp, t);
+                    // Live update while running
+                    if (opStat) {
+                        int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                        fireman_set_setpoints(clamped, clamped);
+                    }
                 }
             } break;
 
@@ -661,12 +725,26 @@ void page_main(event_msg_t msg){
 
             } break;
 
-            case 41: { // "RIGHT_TOP"
-
+            case 41: { // "RIGHT_TOP" (increment hold)
+                int t = lv_subject_get_int(&targetTemp) + 1;
+                if (t < 61) {
+                    lv_subject_set_int(&targetTemp, t);
+                    if (opStat) {
+                        int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                        fireman_set_setpoints(clamped, clamped);
+                    }
+                }
             } break;
 
-            case 42: { // "RIGHT_CENTER"
-
+            case 42: { // "RIGHT_CENTER" (decrement hold)
+                int t = lv_subject_get_int(&targetTemp) - 1;
+                if (t > -1) {
+                    lv_subject_set_int(&targetTemp, t);
+                    if (opStat) {
+                        int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                        fireman_set_setpoints(clamped, clamped);
+                    }
+                }
             } break;
 
             case 45: { // "LEFT_BOTTOM"
@@ -779,7 +857,7 @@ static void settings_adjust_value(int activeSetting, int dir) {
         case 3: { // DISPLAY BRIGHTNESS % (step 5)
             int b = lv_subject_get_int(&brightness);
             b += (dir > 0 ? 5 : -5);
-            if (b < 0) b = 0; else if (b > 100) b = 100;
+            if (b < 5) b = 5; else if (b > 100) b = 100; // enforce min 5 for user-visible setting
             lv_subject_set_int(&brightness, b);
             backlight_set_brightness((uint8_t)b);
         } break;

@@ -30,4 +30,8 @@ void fireman_set_setpoint1(int setpoint_c);
 void fireman_set_setpoint2(int setpoint_c);
 void fireman_set_setpoints(int sp1_c, int sp2_c);
 
+// Request a PD fixed voltage (5,9,15,20). Returns true on success, false on failure.
+// Uses the same internal mechanism as Fireman's own PD management.
+bool fireman_request_pd_voltage(uint8_t voltage);
+
 #endif
