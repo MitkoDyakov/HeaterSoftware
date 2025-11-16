@@ -5,7 +5,7 @@
 #include "freertos/queue.h"
 #include "esp_log.h"
 
-#include "switchboard/user_input.h"
+#include "switchboard/switchboard.h"
 #include "mailman/i2c_task.h"
 #include "composer/buzzer.h"
 #include "director/director.h"
@@ -103,7 +103,12 @@ void app_main(void) {
 	}
 
 	// Start subsystems
-	inputdetect_setup(g_button_queue);
+	esp_err_t ret = switchboard_init(g_button_queue);
+	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Switchboard initialization failed: %s", esp_err_to_name(ret));
+		return;
+	}
+
 	i2c_task_start(g_i2c_queue);
 	// Wait (up to 1s) for I2C task to finish device setup so PD caps are ready before director
 	{

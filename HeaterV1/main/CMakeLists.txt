@@ -5,7 +5,7 @@ idf_component_register(
         "mailman/ap33772s.c"
         "mailman/ads7142.c"
         "mailman/TMP110.c"
-        "switchboard/user_input.c"
+        "switchboard/switchboard.c"
         "composer/buzzer.c"
         "fireman/fireman.c"
         "wiseman/wiseman.c"

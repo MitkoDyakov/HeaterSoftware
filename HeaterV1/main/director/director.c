@@ -28,7 +28,7 @@
 #include "home_gen.h"
 #include "HeaterGUI_gen.h"
 #include "director.h"
-#include "switchboard/user_input.h"
+#include "switchboard/switchboard.h"
 #include "fireman/fireman.h"
 #include "mailman/i2c_task.h" // still needed for button events type definitions
 #include "AP33772S.h"         // for ap33772s_caps_t if not already included
