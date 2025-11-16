@@ -14,7 +14,7 @@ static button_t buttons[NUM_BUTTONS] = {
     { .gpio = 40, .name = "RIGHT_BOTTOM"},
     { .gpio = 41, .name = "RIGHT_TOP"},
     { .gpio = 42, .name = "RIGHT_CENTER"},
-    { .gpio = 45, .name = "LEFT_BOTTOM"},
+    { .gpio = 35, .name = "LEFT_BOTTOM"},
     { .gpio = 47, .name = "LEFT_CENTER"},
     { .gpio = 48, .name = "LEFT_TOP"}
 };

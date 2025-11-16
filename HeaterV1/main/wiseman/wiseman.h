@@ -9,10 +9,6 @@ extern "C" {
 // Versioning for settings struct; bump when format changes.
 #define WISEMAN_SETTINGS_VERSION 3
 
-// Disable all persistence (NVS writes and background task) for now.
-// Re-enable later by commenting this line and building with proper tests.
-// #define WISEMAN_DISABLE_PERSIST 1
-
 // Optional: define WISEMAN_PERSIST_SYNC to skip background task and
 // perform a (debounced) immediate save from the calling context when
 // settings change. Not enabled by default.
@@ -22,6 +18,13 @@ extern "C" {
 #ifndef WISEMAN_SETPOINT_AUTOSAVE_SECS_DEFAULT
 #define WISEMAN_SETPOINT_AUTOSAVE_SECS_DEFAULT 30
 #endif
+
+// Screen orientation options
+typedef enum {
+    WISEMAN_ORIENTATION_DEFAULT = 0,  // Normal orientation
+    WISEMAN_ORIENTATION_ROTATED = 1,  // 180° rotated
+    WISEMAN_ORIENTATION_AUTO = 2      // Automatic based on tilt sensor
+} wiseman_orientation_t;
 
 // Settings structure; add fields as needed. Keep packed/stable.
 typedef struct {
@@ -37,6 +40,7 @@ typedef struct {
     char wifi_pass[65];       // null-terminated
     uint32_t op_time_min;     // accumulated operating time (minutes)
     uint16_t sleep_timeout_s; // display dim timeout in seconds (0 = never)
+    uint8_t screen_orientation;  // 0=default, 1=rotated, 2=auto
     // Add more as required
 } wiseman_settings_t;
 
@@ -63,15 +67,13 @@ void wiseman_set_wifi_credentials(const char* ssid, const char* pass);
 // New mutators
 void wiseman_set_sleep_timeout_seconds(uint16_t seconds);
 void wiseman_set_heaters_enabled(bool ch1, bool ch2);
+void wiseman_set_screen_orientation(wiseman_orientation_t orientation);
 
 // Manual save: persist current settings immediately
 bool wiseman_save_now(void);
 
 // Reset to compiled defaults and save
 bool wiseman_reset_to_defaults(void);
-
-// Configure setpoint autosave debounce timeout in seconds (0 disables autosave)
-void wiseman_set_autosave_timeout(uint32_t seconds);
 
 #ifdef __cplusplus
 }

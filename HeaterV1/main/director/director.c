@@ -31,13 +31,16 @@
 #include "switchboard/user_input.h"
 #include "fireman/fireman.h"
 #include "mailman/i2c_task.h" // still needed for button events type definitions
-#include "AP33772S.h" // for ap33772s_caps_t if not already included
+#include "AP33772S.h"         // for ap33772s_caps_t if not already included
 #include "wiseman/wiseman.h"
 #include "wiseman/wiseman_persist.h"
 #include "driver/ledc.h"
 #include "pwm_alloc.h"
 #include <math.h>
 
+#include "pinout.h"
+
+esp_lcd_panel_handle_t panel_handle = NULL; // Global panel handle
 //patch -p1 < ../../lvgl_translation_fix_forward.patch
 //Copilot Chat: Open in Editor Tab 
 
@@ -191,14 +194,6 @@ static ap33772s_caps_t g_initial_pd_caps = {0};
 
 // ===================== Display & LVGL =====================
 
-#define PIN_NUM_MOSI 37
-#define PIN_NUM_CLK  36
-#define PIN_NUM_CS   35
-#define PIN_NUM_DC   38
-#define PIN_NUM_RST  39
-
-#define BACKLIGHT_CONTROL_PIN   (10)
-
 // ---------------- Backlight PWM (LEDC) ----------------
 #define BACKLIGHT_LEDC_TIMER       PWM_BACKLIGHT_TIMER
 #define BACKLIGHT_LEDC_MODE        LEDC_LOW_SPEED_MODE
@@ -222,7 +217,7 @@ static void backlight_pwm_init(uint8_t initial_pct) {
 
     // Configure channel
     const ledc_channel_config_t ch_cfg = {
-        .gpio_num       = BACKLIGHT_CONTROL_PIN,
+        .gpio_num       = DISPLAY_BACKLIGHT,
         .speed_mode     = BACKLIGHT_LEDC_MODE,
         .channel        = BACKLIGHT_LEDC_CHANNEL,
         .intr_type      = LEDC_INTR_DISABLE,
@@ -253,13 +248,105 @@ static void backlight_set_brightness(uint8_t pct) {
     s_backlight_last_pct = pct;
 }
 
+// ---------------- Display Tilt Detection ----------------
+static lv_display_t *s_lvgl_display = NULL;  // Global reference to LVGL display
+static bool s_display_flipped = false;       // Current orientation state
+static TickType_t s_last_tilt_change = 0;    // Debounce timing
+static bool s_last_tilt_state = false;       // Last stable tilt pin state
+
+#define TILT_DEBOUNCE_MS 50  // Debounce time in milliseconds
+
+static void display_set_orientation(bool flipped) {
+    if (!panel_handle || !s_lvgl_display) return;
+    
+    if (s_display_flipped == flipped) return; // No change needed
+    
+    s_display_flipped = flipped;
+    
+    if (flipped) {
+        // 180° rotated orientation (270° LVGL rotation + Y-axis mirror)
+        ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, false, true));
+        lv_display_set_rotation(s_lvgl_display, LV_DISPLAY_ROTATION_270);
+    } else {
+        // Normal orientation (90° LVGL rotation + X-axis mirror)
+        ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
+        lv_display_set_rotation(s_lvgl_display, LV_DISPLAY_ROTATION_90);
+    }
+    
+    ESP_LOGI("director.tilt", "Display orientation: %s", flipped ? "normal" : "rotated 180°");
+}
+
+static void tilt_gpio_init(void) {
+    gpio_config_t io_conf = {
+        .intr_type = GPIO_INTR_DISABLE,
+        .mode = GPIO_MODE_INPUT,
+        .pin_bit_mask = (1ULL << DISPLAY_TILT),
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .pull_up_en = GPIO_PULLUP_ENABLE
+    };
+    gpio_config(&io_conf);
+    
+    // Initialize tilt state
+    s_last_tilt_state = gpio_get_level(DISPLAY_TILT);
+    s_last_tilt_change = xTaskGetTickCount();
+    
+    ESP_LOGI("director.tilt", "Tilt GPIO initialized (pin %d, pull-up enabled, initial state: %d)", 
+             DISPLAY_TILT, s_last_tilt_state);
+}
+
+// ---------------- Button Remapping for Display Rotation ----------------
+static uint8_t remap_button_for_orientation(uint8_t original_btn_id) {
+    ESP_LOGI("director.page", "button %u", original_btn_id);
+
+    if (!s_display_flipped) {
+        return original_btn_id; // No remapping needed for normal orientation
+    }
+
+    // When display is rotated 180°, remap buttons to maintain logical positions
+    // Physical button -> Logical position after 180° rotation
+    switch (original_btn_id) {
+        case BUTTON_RIGHT_TOP:    return BUTTON_LEFT_BOTTOM;  // RIGHT_TOP (41) -> RIGHT_BOTTOM (40)
+        case BUTTON_RIGHT_CENTER: return BUTTON_LEFT_CENTER;  // RIGHT_CENTER (42) -> LEFT_CENTER (48)
+        case BUTTON_RIGHT_BOTTOM: return BUTTON_LEFT_TOP;  // RIGHT_BOTTOM (40) -> RIGHT_TOP (41)
+        case BUTTON_LEFT_TOP:     return BUTTON_RIGHT_BOTTOM;  // LEFT_TOP (35) -> LEFT_BOTTOM (47)
+        case BUTTON_LEFT_CENTER:  return BUTTON_RIGHT_CENTER;  // LEFT_CENTER (48) -> RIGHT_CENTER (42)
+        case BUTTON_LEFT_BOTTOM:  return BUTTON_RIGHT_TOP;  // LEFT_BOTTOM (47) -> LEFT_TOP (35)
+        default: 
+            ESP_LOGW("director.btn", "Unknown button ID %d, no remapping", original_btn_id);
+            return original_btn_id;
+    }
+}
+
+static void tilt_check_and_update(void) {
+    if (!s_lvgl_display) return;
+    
+    bool current_state = gpio_get_level(DISPLAY_TILT);
+    TickType_t now = xTaskGetTickCount();
+    
+    // Check if state changed
+    if (current_state != s_last_tilt_state) {
+        s_last_tilt_change = now;
+        s_last_tilt_state = current_state;
+        return; // Wait for debounce
+    }
+    
+    // Check if debounce time has passed
+    TickType_t elapsed = now - s_last_tilt_change;
+    if (elapsed < pdMS_TO_TICKS(TILT_DEBOUNCE_MS)) {
+        return; // Still in debounce period
+    }
+    
+    // State is stable, update display orientation
+    // Invert logic: LOW (ground) = flipped orientation, HIGH (pull-up) = normal
+    display_set_orientation(!current_state);
+}
+
 uint8_t opStat = 0; // 0=stopped, 1=running
 
 #define IMAGE_WIDTH  240
 #define IMAGE_HEIGHT 135
 #define JPG_BPP      2        // RGB565 = 2 bytes
 
-esp_lcd_panel_handle_t panel_handle = NULL; // Global panel handle
 static void *lvBuffer1;
 static void *lvBuffer2;
 #define draw_buffer_sz (IMAGE_WIDTH * IMAGE_HEIGHT * JPG_BPP)          // Buffer for 10 rows
@@ -288,8 +375,8 @@ void lvgl_init_display(void)
 
     // Initialize the SPI bus
     spi_bus_config_t buscfg = {
-        .sclk_io_num = PIN_NUM_CLK,
-        .mosi_io_num = PIN_NUM_MOSI,
+        .sclk_io_num = DISPLAY_SCK,
+        .mosi_io_num = DISPLAY_MOSI,
         .miso_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
@@ -301,8 +388,8 @@ void lvgl_init_display(void)
     esp_lcd_panel_io_handle_t io_handle = NULL;
 
     esp_lcd_panel_io_spi_config_t io_config = {
-        .dc_gpio_num = PIN_NUM_DC,
-        .cs_gpio_num = PIN_NUM_CS,
+        .dc_gpio_num = DISPLAY_RS,
+        .cs_gpio_num = DISPLAY_CS,
         .pclk_hz = 80 * 1000 * 1000, // Use 40 MHz for stability
         .spi_mode = 0,
         .trans_queue_depth = 10,
@@ -313,7 +400,7 @@ void lvgl_init_display(void)
 
     // Initialize the display panel
     esp_lcd_panel_dev_config_t panel_config = {
-        .reset_gpio_num = PIN_NUM_RST,
+        .reset_gpio_num = DISPLAY_RST,
         .color_space = LCD_RGB_ENDIAN_RGB,
         .bits_per_pixel = 16
     };
@@ -322,7 +409,7 @@ void lvgl_init_display(void)
     // Reset and initialize the panel
     ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
     ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
-    ESP_ERROR_CHECK(esp_lcd_panel_set_gap(panel_handle, 40, 53));
+    ESP_ERROR_CHECK(esp_lcd_panel_set_gap(panel_handle, 40, 52));
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle, true));
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle, true));
@@ -337,9 +424,9 @@ void lvgl_init_display(void)
         wiseman_set_display_brightness(initial_brightness);
     }
     backlight_pwm_init(initial_brightness);
-
     // Create LVGL display
     lv_display_t *lvDisplay = lv_display_create(135, 240);
+    s_lvgl_display = lvDisplay; // Store global reference for runtime rotation
     lv_display_set_rotation(lvDisplay, LV_DISPLAY_ROTATION_90);
     lv_display_set_color_format(lvDisplay, LV_COLOR_FORMAT_RGB565); // Use RGB565
     lv_display_set_flush_cb(lvDisplay, lvgl_flush_cb);
@@ -349,6 +436,14 @@ void lvgl_init_display(void)
         .on_color_trans_done = notify_lvgl_flush_ready,
     };
     ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, lvDisplay));
+    
+    // Initialize tilt detection GPIO
+    tilt_gpio_init();
+    
+    // Set initial display orientation based on tilt pin state
+    s_display_flipped = false; // Current state matches 270° rotation + Y-mirror
+    // Invert logic: LOW (ground) = flipped orientation, HIGH (pull-up) = normal
+    display_set_orientation(!gpio_get_level(DISPLAY_TILT));
 }
  
 // ===================== UI Clock via LVGL timer =====================
@@ -530,7 +625,13 @@ static void director_task(void *arg)
         // Drain button events here (replaces vConsoleTask)
         event_msg_t msg;
         while (xQueueReceive(g_button_queue, &msg, 0) == pdTRUE) {
-            ESP_LOGD("director.btn", "btn id=%d event=%d page=%u", msg.btn_id, msg.event, current_page);
+            // Remap button ID based on display orientation
+            uint8_t original_btn_id = msg.btn_id;
+            msg.btn_id = remap_button_for_orientation(msg.btn_id);
+            
+            ESP_LOGD("director.btn", "btn id=%d->%d event=%d page=%u flipped=%d", 
+                     original_btn_id, msg.btn_id, msg.event, current_page, s_display_flipped);
+            
             // Update inactivity timer and handle wake on any button while sleeping
             s_last_input_tick = xTaskGetTickCount();
             if (s_display_sleeping) {
@@ -540,7 +641,7 @@ static void director_task(void *arg)
                 // Ignore this event so the first press only wakes the display
                 continue;
             }
-            if(msg.btn_id == 45) { // "LEFT_BOTTOM"
+            if(msg.btn_id == BUTTON_LEFT_BOTTOM) { // "LEFT_BOTTOM"
                 if (msg.event == BUTTON_EVENT_SHORT || msg.event == BUTTON_EVENT_REPEAT) {
                     uint8_t prev = current_page;
                     uint8_t next = (current_page + 1) % PAGE_COUNT;
@@ -596,6 +697,10 @@ static void director_task(void *arg)
         }
 
         lv_timer_handler();
+        
+        // Check tilt pin and update display orientation if needed
+        tilt_check_and_update();
+        
         // Update runtime display approximately once per loop (10ms delay below) but only when minute count changes.
         static uint32_t s_last_runtime_min = 0xFFFFFFFFu; // force first update
         uint32_t cur_min = wiseman_get_op_time_minutes();
@@ -630,7 +735,7 @@ bool director_start(QueueHandle_t button_event_queue, QueueHandle_t sample_queue
 void page_main(event_msg_t msg){
     if (msg.event == BUTTON_EVENT_SHORT) {
         switch (msg.btn_id) {
-            case 40: { // "RIGHT_BOTTOM" (START/STOP)
+            case BUTTON_RIGHT_BOTTOM: { // "RIGHT_BOTTOM" (START/STOP)
                 opStat = !opStat;
                 if (opStat) {
                     lv_subject_copy_string(&command, "STOP");
@@ -683,7 +788,7 @@ void page_main(event_msg_t msg){
                 }
             } break;
 
-            case 41: { // "RIGHT_TOP"
+            case BUTTON_RIGHT_TOP: { // "RIGHT_TOP"
                 int t = lv_subject_get_int(&targetTemp) + 1;
                 if (t < 61) {
                     lv_subject_set_int(&targetTemp, t);
@@ -695,7 +800,7 @@ void page_main(event_msg_t msg){
                 }
             } break;
 
-            case 42: { // "RIGHT_CENTER"
+            case BUTTON_RIGHT_CENTER: { // "RIGHT_CENTER"
                 int t = lv_subject_get_int(&targetTemp) - 1;
                 if (t > -1) {
                     lv_subject_set_int(&targetTemp, t);
@@ -705,27 +810,11 @@ void page_main(event_msg_t msg){
                         fireman_set_setpoints(clamped, clamped);
                     }
                 }
-            } break;
-
-            case 45: { // "LEFT_BOTTOM"
-                // handled in main loop
-            } break;
-
-            case 47: { // "LEFT_CENTER"
-                // handled in main loop
-            } break;
-
-            case 48: { // "LEFT_TOP"
-                // handled in main loop
             } break;
         }
     } else if (msg.event == BUTTON_EVENT_REPEAT) {
         switch (msg.btn_id) {
-            case 40: { // "RIGHT_BOTTOM"
-
-            } break;
-
-            case 41: { // "RIGHT_TOP" (increment hold)
+            case BUTTON_RIGHT_TOP: { // "RIGHT_TOP" (increment hold)
                 int t = lv_subject_get_int(&targetTemp) + 1;
                 if (t < 61) {
                     lv_subject_set_int(&targetTemp, t);
@@ -736,7 +825,7 @@ void page_main(event_msg_t msg){
                 }
             } break;
 
-            case 42: { // "RIGHT_CENTER" (decrement hold)
+            case BUTTON_RIGHT_CENTER: { // "RIGHT_CENTER" (decrement hold)
                 int t = lv_subject_get_int(&targetTemp) - 1;
                 if (t > -1) {
                     lv_subject_set_int(&targetTemp, t);
@@ -745,77 +834,13 @@ void page_main(event_msg_t msg){
                         fireman_set_setpoints(clamped, clamped);
                     }
                 }
-            } break;
-
-            case 45: { // "LEFT_BOTTOM"
-
-            } break;
-
-            case 47: { // "LEFT_CENTER"
-
-            } break;
-
-            case 48: { // "LEFT_TOP"
-
             } break;
         }
     }
 }
 
 void page_power(event_msg_t msg){
-    if (msg.event == BUTTON_EVENT_SHORT) {
-        switch (msg.btn_id) {
-            case 40: { // "RIGHT_BOTTOM"
-
-            } break;
-
-            case 41: { // "RIGHT_TOP"
-
-            } break;
-
-            case 42: { // "RIGHT_CENTER"
-
-            } break;
-
-            case 45: { // "LEFT_BOTTOM"
-
-            } break;
-
-            case 47: { // "LEFT_CENTER"
-
-            } break;
-
-            case 48: { // "LEFT_TOP"
-
-            } break;
-        }
-    } else if (msg.event == BUTTON_EVENT_REPEAT) {
-        switch (msg.btn_id) {
-            case 40: { // "RIGHT_BOTTOM"
-
-            } break;
-
-            case 41: { // "RIGHT_TOP"
-
-            } break;
-
-            case 42: { // "RIGHT_CENTER"
-
-            } break;
-
-            case 45: { // "LEFT_BOTTOM"
-
-            } break;
-
-            case 47: { // "LEFT_CENTER"
-
-            } break;
-
-            case 48: { // "LEFT_TOP"
-
-            } break;
-        }
-    }
+    // we are not handling any button events on this page for now
 }
 
 // -------- Settings page helpers --------
@@ -883,7 +908,7 @@ void page_settings(event_msg_t msg){
 
     if (msg.event == BUTTON_EVENT_SHORT) {
         switch (msg.btn_id) {
-            case 41: { // RIGHT_TOP
+            case BUTTON_RIGHT_TOP: { // RIGHT_TOP
                 if (s_settings_edit_mode) {
                     // adjust up
                     settings_adjust_value(activeSetting, +1);
@@ -896,7 +921,7 @@ void page_settings(event_msg_t msg){
                     }
                 }
             } break;
-            case 40: { // RIGHT_BOTTOM
+            case BUTTON_RIGHT_BOTTOM: { // RIGHT_BOTTOM
                 if (s_settings_edit_mode) {
                     // adjust down
                     settings_adjust_value(activeSetting, -1);
@@ -909,7 +934,7 @@ void page_settings(event_msg_t msg){
                     }
                 }
             } break;
-            case 42: { // RIGHT_CENTER -> toggle edit mode (enter/confirm)
+            case BUTTON_RIGHT_CENTER: { // RIGHT_CENTER -> toggle edit mode (enter/confirm)
                 if (!s_settings_edit_mode) {
                     // entering edit: capture current index and start blink phase fresh
                     int cur = lv_subject_get_int(&settingsSelect);
@@ -931,10 +956,10 @@ void page_settings(event_msg_t msg){
     } else if (msg.event == BUTTON_EVENT_REPEAT) {
         if (s_settings_edit_mode) {
             switch (msg.btn_id) {
-                case 41: // hold up
+                case BUTTON_RIGHT_TOP: // hold up
                     settings_adjust_value(activeSetting, +1);
                     break;
-                case 40: // hold down
+                case BUTTON_RIGHT_BOTTOM: // hold down
                     settings_adjust_value(activeSetting, -1);
                     break;
                 default:
@@ -945,57 +970,5 @@ void page_settings(event_msg_t msg){
 }
 
 void page_info(event_msg_t msg){
-   if(msg.event == BUTTON_EVENT_SHORT){
-        switch (msg.btn_id) {
-            case 40: { // "RIGHT_BOTTOM"
-
-            } break;
-
-            case 41: { // "RIGHT_TOP"
-
-            } break;
-
-            case 42: { // "RIGHT_CENTER"
-
-            } break;
-
-            case 45: { // "LEFT_BOTTOM"
-
-            } break;
-
-            case 47: { // "LEFT_CENTER"
-
-            } break;
-
-            case 48: { // "LEFT_TOP"
-
-            } break;
-        }
-    } else if (msg.event == BUTTON_EVENT_REPEAT){
-        switch (msg.btn_id) {
-            case 40: { // "RIGHT_BOTTOM"
-
-            } break;
-
-            case 41: { // "RIGHT_TOP"
-
-            } break;
-
-            case 42: { // "RIGHT_CENTER"
-
-            } break;
-
-            case 45: { // "LEFT_BOTTOM"
-
-            } break;
-
-            case 47: { // "LEFT_CENTER"
-
-            } break;
-
-            case 48: { // "LEFT_TOP"
-
-            } break;
-        }
-    }
+    // we are not handling any button events on this page for now
 }

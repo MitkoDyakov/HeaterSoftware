@@ -200,3 +200,21 @@ static const ap33772s_fixed_pdo_t* find_best_fixed(uint16_t target_mv){
   }
   return best;
 }
+
+uint16_t AP33772S_getCurrent()
+{
+  // 24mA/LSB
+  uint8_t reg_addr = CMD_CURRENT;
+  uint8_t rx_data = 0;
+  esp_err_t ret = i2c_master_transmit_receive(pdDevice, &reg_addr, 1, &rx_data, 1, I2C_TOOL_TIMEOUT_VALUE_MS);
+  return (uint16_t)(rx_data * 24);
+}
+
+uint8_t APS33772S_getTemperature()
+{
+  // 1C/LSB
+  uint8_t reg_addr = CMD_TEMP;
+  uint8_t rx_data = 0;
+  esp_err_t ret = i2c_master_transmit_receive(pdDevice, &reg_addr, 1, &rx_data, 1, I2C_TOOL_TIMEOUT_VALUE_MS);
+  return rx_data;
+}
