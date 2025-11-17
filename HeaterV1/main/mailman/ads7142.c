@@ -168,8 +168,7 @@ bool ADS7142_setup(i2c_master_dev_handle_t devHandler)
     cmd[1] = ADS7142_REG_ACC_EN;
     cmd[2] = ADS7142_VAL_ACC_EN;
     ESP_ERROR_CHECK(i2c_master_transmit(ADCDevice, cmd, 3, ADS7142_I2C_TIMEOUT_MS));
-
-
+    
     return true;
 }
 

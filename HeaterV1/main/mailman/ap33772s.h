@@ -134,7 +134,9 @@ typedef struct {
 
 
 bool AP33772S_setup(i2c_master_dev_handle_t pdDevice);
-bool setFixPDO(uint8_t voltage);
+uint16_t AP33772S_getCurrent();
+uint8_t APS33772S_getTemperature();
+bool AP33772S_setFixPDO(uint8_t voltage);
 
 // Retrieve current parsed fixed PDO capabilities (currents placeholder 0.0A for now)
 typedef struct {
@@ -145,5 +147,4 @@ typedef struct {
 } ap33772s_caps_t;
 
 void ap33772s_get_caps(ap33772s_caps_t *out);
-
 #endif // AP33772S_H

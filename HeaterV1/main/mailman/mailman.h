@@ -1,10 +1,11 @@
-#ifndef I2C_TASK_H
-#define I2C_TASK_H
+#ifndef MAILMAN_H
+#define MAILMAN_H
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "ap33772s.h"
 #include <stdint.h>
 
 // Result structure for returning both ADC channels
@@ -13,25 +14,16 @@ typedef struct {
     double chan2;
 } adc_result_t;
 
-typedef struct {
-    float ambientTemp;
-} ambient_temp_result_t;
+
 
 typedef enum {
     I2C_MSG_PD_SET_PDO,     // Set PDO (voltage/current) on PD controller
-    I2C_MSG_PD_GET_CAPS,    // Get fixed PDO capability flags/currents
+    I2C_MSG_PD_GET_CURRENT, // Get current draw from PD controller
+    I2C_MSG_PD_GET_TEMP,    // Get temperature from PD controller
     I2C_MSG_ADC_READ_SINGLE_CH,  // Read ADC channel (chan1 or chan2)
     I2C_MSG_ADC_READ_BOTH,  // Read both ADC channels
     I2C_MSG_READ_AMBIENT_TEMP,  // Read ambient temperature
 } i2c_msg_type_t;
-
-// PD capability response (currents Amps, placeholder until decoded)
-typedef struct {
-    bool have5;  float cur5;
-    bool have9;  float cur9;
-    bool have15; float cur15;
-    bool have20; float cur20;
-} i2c_pd_caps_resp_t;
 
 typedef struct {
     i2c_msg_type_t type;
@@ -46,7 +38,6 @@ typedef struct {
     QueueHandle_t response_queue; // For sending result back
 } i2c_msg_t;
 
-void i2c_task_start(QueueHandle_t queue);
-SemaphoreHandle_t i2c_get_ready_semaphore(void);
+void mailman_init(QueueHandle_t queue, ap33772s_caps_t *pd_caps);
 
-#endif // I2C_TASK_H
+#endif // MAILMAN_H

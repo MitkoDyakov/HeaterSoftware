@@ -8,19 +8,20 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
-#include "mailman/i2c_task.h"
+#include "mailman/mailman.h"
 #include "pinout.h"
 #include "wiseman/wiseman.h"
 
 #define BOARD_MAX_TEMPERATURE_C            60.0f  /* °C – shut off above this */
 #define CONTROL_PERIOD_MILLISECONDS_ACTIVE 500     /* 500 ms when heating active */
-#define CONTROL_PERIOD_MILLISECONDS_IDLE  1500     /* 1.5 s when idle (both heaters disabled) */
+#define CONTROL_PERIOD_MILLISECONDS_IDLE   1500     /* 1.5 s when idle (both heaters disabled) */
 #define PROPORTIONAL_GAIN                  2.0f
 #define INTEGRAL_GAIN                      0.03f  /* 1/s */
 #define DERIVATIVE_GAIN                    4.0f   /* s   */
 #define DERIVATIVE_CLAMP_C_PER_SECOND      5.0f
-#define MAX_DUTY               ((1 << 13) - 1)
-ledc_channel_config_t heater_channel_1 = {
+#define MAX_DUTY                           ((1 << 13) - 1)
+
+static const ledc_channel_config_t heater_channel_1 = {
     .channel    = PWM_HEATER_CH1,
     .duty       = 0,
     .gpio_num   = HEATER_CHANNEL_1,
@@ -30,7 +31,7 @@ ledc_channel_config_t heater_channel_1 = {
     .flags.output_invert = 0
 };
 
-ledc_channel_config_t heater_channel_2 = {
+static const ledc_channel_config_t heater_channel_2 = {
     .channel    = PWM_HEATER_CH2,
     .duty       = 0,
     .gpio_num   = HEATER_CHANNEL_2,
@@ -61,11 +62,6 @@ static QueueHandle_t g_jumbo_queue = NULL; // single-slot display queue (xQueueO
 static QueueHandle_t s_adc_resp_queue = NULL; // persistent response queue (avoid alloc per loop)
 static volatile bool heater1_enabled = false;  /* Cross-task flag */
 static volatile bool heater2_enabled = false;  /* Cross-task flag */
-/* PD management: track current fixed voltage (5,9,15,20). PoR default is 5V */
-static int current_pd_voltage = 5;
-static bool prev_any_enabled = false;        /* (Unused after PD mgmt removal) */
-
-// ===== USB-PD capability snapshot =====
 
 static void fireman_task(void *arg);
 
@@ -76,7 +72,7 @@ static inline float clamp_float(float value, float minimum, float maximum)
     return value;
 }
 
-void PIDController_Init(PID_Controller *controller, float proportionalGain, float integralGain, float derivativeGain,  float outputMinimumPercent,  float outputMaximumPercent)
+static void PIDController_Init(PID_Controller *controller, float proportionalGain, float integralGain, float derivativeGain,  float outputMinimumPercent,  float outputMaximumPercent)
 {
     controller->proportionalGain    = proportionalGain;
     controller->integralGain        = integralGain;
@@ -89,7 +85,7 @@ void PIDController_Init(PID_Controller *controller, float proportionalGain, floa
     controller->outputMaximumPercent = outputMaximumPercent;
 }
 
-float PIDController_Compute(PID_Controller *controller, float setPoint, float measuredValue, float deltaTimeSeconds)
+static float PIDController_Compute(PID_Controller *controller, float setPoint, float measuredValue, float deltaTimeSeconds)
 {
     /* 1. Instantaneous error */
     float error = setPoint - measuredValue;
@@ -127,7 +123,7 @@ float PIDController_Compute(PID_Controller *controller, float setPoint, float me
     return rawOutputPercent;
 }
 
-bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue)
+bool fireman_init(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue)
 {
     ledc_timer_config_t heater_timer = {
         .duty_resolution = LEDC_TIMER_13_BIT,
@@ -136,6 +132,7 @@ bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue)
         .timer_num = LEDC_TIMER_3,
         .clk_cfg = LEDC_AUTO_CLK,
     };
+
     ledc_timer_config(&heater_timer);
     ledc_channel_config(&heater_channel_1);
     ledc_channel_config(&heater_channel_2);
@@ -150,6 +147,7 @@ bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue)
                        DERIVATIVE_GAIN,
                        0.0f,
                        100.0f);
+
     PIDController_Init(&pid2,
                        PROPORTIONAL_GAIN,
                        INTEGRAL_GAIN,
@@ -173,10 +171,24 @@ bool fireman_setup(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue)
     return true;
 }
 
-void fireman_set_heater1_enabled(bool en) { heater1_enabled = en; }
-void fireman_set_heater2_enabled(bool en) { heater2_enabled = en; }
-void fireman_set_setpoint1(int setpoint_c) { setpoint1_c = setpoint_c; wiseman_set_setpoint1((int16_t)setpoint_c); }
-void fireman_set_setpoint2(int setpoint_c) { setpoint2_c = setpoint_c; wiseman_set_setpoint2((int16_t)setpoint_c); }
+void fireman_set_heater1_enabled(bool en) { 
+    heater1_enabled = en; 
+}
+
+void fireman_set_heater2_enabled(bool en) { 
+    heater2_enabled = en; 
+}
+
+void fireman_set_setpoint1(int setpoint_c) {
+     setpoint1_c = setpoint_c; 
+     wiseman_set_setpoint1((int16_t)setpoint_c); 
+}
+
+void fireman_set_setpoint2(int setpoint_c) {
+    setpoint2_c = setpoint_c; 
+    wiseman_set_setpoint2((int16_t)setpoint_c); 
+}
+
 void fireman_set_setpoints(int sp1_c, int sp2_c) {
     setpoint1_c = sp1_c; setpoint2_c = sp2_c;
     wiseman_set_setpoint1((int16_t)sp1_c);
@@ -196,32 +208,9 @@ static esp_err_t request_adc(adc_result_t *out) {
     return ESP_OK;
 }
 
-/* Helper: request a specific fixed voltage (5,9,15,20) and wait for boolean success */
-static bool send_pd_voltage(uint8_t voltage) {
-    if (!g_i2c_queue) return false;
-    i2c_msg_t msg = {0};
-    msg.type = I2C_MSG_PD_SET_PDO;
-    msg.data.pd_set.set_voltage = voltage; /* actual voltage value */
-    QueueHandle_t resp = xQueueCreate(1, sizeof(bool));
-    if (!resp) return false;
-    msg.response_queue = resp;
-    bool ok = false;
-    if (xQueueSend(g_i2c_queue, &msg, pdMS_TO_TICKS(50)) == pdTRUE) {
-        if (xQueueReceive(resp, &ok, pdMS_TO_TICKS(200)) != pdTRUE) ok = false;
-    }
-    vQueueDelete(resp);
-    return ok;
-}
 
-bool fireman_request_pd_voltage(uint8_t voltage) {
-    if (voltage != 5 && voltage != 9 && voltage != 15 && voltage != 20) return false;
-    bool ok = send_pd_voltage(voltage);
-    if (ok) current_pd_voltage = voltage;
-    return ok;
-}
 
-// PD voltage now managed explicitly by director; retain stub for clarity.
-static void manage_pd_voltage(void) { /* no-op */ }
+
 
 static void fireman_task(void *arg) {
     TickType_t last_wake = xTaskGetTickCount();
@@ -245,7 +234,6 @@ static void fireman_task(void *arg) {
         bool adc_ok = (g_i2c_queue && request_adc(&adc) == ESP_OK);
 
         if (adc_ok) {
-            manage_pd_voltage(); // no-op now
             float dt_s = (float)current_period_ms / 1000.0f;
 
             // Over-temperature fail-safe: hard cutoff
@@ -338,6 +326,3 @@ static void fireman_task(void *arg) {
     }
 }
 
-int fireman_get_current_pd_voltage(void) { return current_pd_voltage; }
-
-// Legacy interactive PID test removed in favor of autonomous task.

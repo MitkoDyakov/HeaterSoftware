@@ -150,7 +150,7 @@ void parsePDOlist()
 }
 
 
-bool setFixPDO(uint8_t voltage)
+bool AP33772S_setFixPDO(uint8_t voltage)
 {
   uint16_t target_mv = 0;
   switch(voltage){

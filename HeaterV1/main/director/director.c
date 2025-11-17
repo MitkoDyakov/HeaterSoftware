@@ -30,7 +30,7 @@
 #include "director.h"
 #include "switchboard/switchboard.h"
 #include "fireman/fireman.h"
-#include "mailman/i2c_task.h" // still needed for button events type definitions
+#include "mailman/mailman.h" // still needed for button events type definitions
 #include "AP33772S.h"         // for ap33772s_caps_t if not already included
 #include "wiseman/wiseman.h"
 #include "wiseman/wiseman_persist.h"
@@ -186,6 +186,7 @@ static uint8_t timer_hh = 0;
 
 static QueueHandle_t g_button_queue = NULL; /* Provided by main (switchboard) */
 static QueueHandle_t g_jumbo_queue  = NULL; /* Fireman sample queue */
+static QueueHandle_t g_i2c_queue    = NULL; /* Mailman I2C queue */
 // No longer requesting PD caps at runtime; we receive a snapshot at startup.
 static ap33772s_caps_t g_initial_pd_caps = {0};
 
@@ -522,14 +523,39 @@ typedef struct {
 typedef struct {
     QueueHandle_t button_q;
     QueueHandle_t sample_q;
+    QueueHandle_t i2c_q;
     ap33772s_caps_t pd_caps;
 } director_args_full_t;
+
+/* Helper: request PD voltage change through mailman */
+static bool request_pd_voltage(uint8_t voltage) {
+    if (!g_i2c_queue || (voltage != 5 && voltage != 9 && voltage != 15 && voltage != 20)) {
+        return false;
+    }
+    i2c_msg_t msg = {0};
+    msg.type = I2C_MSG_PD_SET_PDO;
+    msg.data.pd_set.set_voltage = voltage;
+    QueueHandle_t resp = xQueueCreate(1, sizeof(bool));
+    if (!resp) return false;
+    msg.response_queue = resp;
+    bool ok = false;
+    if (xQueueSend(g_i2c_queue, &msg, pdMS_TO_TICKS(50)) == pdTRUE) {
+        if (xQueueReceive(resp, &ok, pdMS_TO_TICKS(200)) == pdTRUE) {
+            // Success - response received
+        } else {
+            ok = false; // timeout
+        }
+    }
+    vQueueDelete(resp);
+    return ok;
+}
 
 static void director_task(void *arg)
 {
     director_args_full_t *a = (director_args_full_t*)arg;
     g_button_queue = a->button_q;
     g_jumbo_queue  = a->sample_q;
+    g_i2c_queue    = a->i2c_q;
     g_initial_pd_caps = a->pd_caps;
     vPortFree(a); // release argument struct
     configASSERT(g_button_queue);
@@ -721,12 +747,13 @@ static void director_task(void *arg)
     vTaskDelete(NULL);
 }
 
-bool director_start(QueueHandle_t button_event_queue, QueueHandle_t sample_queue, const ap33772s_caps_t *initial_pd_caps) {
-    if (!button_event_queue) return false;
+bool director_init(QueueHandle_t button_event_queue, QueueHandle_t sample_queue, QueueHandle_t i2c_queue, const ap33772s_caps_t *initial_pd_caps) {
+    if (!button_event_queue || !i2c_queue) return false;
     director_args_full_t *args = pvPortMalloc(sizeof(director_args_full_t));
     if (!args) return false;
     args->button_q = button_event_queue;
     args->sample_q = sample_queue;
+    args->i2c_q = i2c_queue;
     if (initial_pd_caps) args->pd_caps = *initial_pd_caps; else memset(&args->pd_caps, 0, sizeof(args->pd_caps));
     BaseType_t ok = xTaskCreate(director_task, "director", 12288, args, 6, NULL);
     return ok == pdPASS;
@@ -760,10 +787,10 @@ void page_main(event_msg_t msg){
                     uint8_t desired = 0;
                     if (caps_snapshot.twentyV) desired = 20; else if (caps_snapshot.fifteenV) desired = 15; else desired = 0;
                     if (desired) {
-                        bool ok = fireman_request_pd_voltage(desired);
+                        bool ok = request_pd_voltage(desired);
                         // If 20V failed and we tried it first, optionally fall back to 15V if available
                         if (!ok && desired == 20 && g_initial_pd_caps.fifteenV) {
-                            ok = fireman_request_pd_voltage(15);
+                            ok = request_pd_voltage(15);
                             if (ok) desired = 15; // reflect fallback voltage
                         }
                         ESP_LOGI("director.pd", "START PD request -> target=%uV result=%d", (unsigned)desired, (int)ok);
@@ -781,7 +808,7 @@ void page_main(event_msg_t msg){
                     fireman_set_heater1_enabled(false);
                     fireman_set_heater2_enabled(false);
                     // Revert PD voltage to 5V (ignore failure)
-                    bool ok = fireman_request_pd_voltage(5);
+                    bool ok = request_pd_voltage(5);
                     ESP_LOGI("director.pd", "STOP PD request 5V result=%d", (int)ok);
                     if (ok) lv_subject_set_int(&activePDO, 5);
                     ESP_LOGI("director.heaters", "Heaters STOP (disabled all)");

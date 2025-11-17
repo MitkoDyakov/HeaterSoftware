@@ -1,12 +1,12 @@
 idf_component_register(
     SRCS
         "main.c"
-        "mailman/i2c_task.c"
+        "mailman/mailman.c"
         "mailman/ap33772s.c"
         "mailman/ads7142.c"
         "mailman/TMP110.c"
         "switchboard/switchboard.c"
-        "composer/buzzer.c"
+        "composer/composer.c"
         "fireman/fireman.c"
         "wiseman/wiseman.c"
         "wiseman/wiseman_persist.c"

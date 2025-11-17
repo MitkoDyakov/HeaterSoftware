@@ -41,7 +41,7 @@ If you contribute, please continue to: (1) treat AI output as a draft, (2) prese
 | **app_main** | Bootstraps subsystems, creates queues, snapshots PD capabilities, launches Director | `main.c` |
 | **Director** | UI orchestration, button event handling, page state machine, PD voltage requests, heater START/STOP logic, runtime display updates | `director/director.c` |
 | **Fireman** | Periodic ADC sampling, PID loops, heater PWM duty computation, temperature sample publication, minute runtime accumulation | `fireman/fireman.c` |
-| **Mailman (I2C Task)** | Serialized I2C access; executes ADC reads, PD SET_PDO commands, ambient sensor queries | `mailman/i2c_task.c` + device drivers |
+| **Mailman** | Serialized I2C access; executes ADC reads, PD SET_PDO commands, ambient sensor queries | `mailman/mailman.c` + device drivers |
 | **Switchboard** | Button (user input) detection + PD capability helpers | `switchboard/switchboard.c`, `switchboard/pd_caps.c` |
 | **Wiseman** | Persistent settings (setpoints, brightness, sleep timeout, runtime minutes, etc.) + dirty tracking + background save | `wiseman/wiseman.c`, `wiseman_persist.c` |
 | **Composer** | Buzzer / audible feedback (future expansion) | `composer/buzzer.*` |

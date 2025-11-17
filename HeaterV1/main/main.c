@@ -6,8 +6,8 @@
 #include "esp_log.h"
 
 #include "switchboard/switchboard.h"
-#include "mailman/i2c_task.h"
-#include "composer/buzzer.h"
+#include "mailman/mailman.h"
+#include "composer/composer.h"
 #include "director/director.h"
 #include "wiseman/wiseman.h"
 #include "fireman/fireman.h"
@@ -21,124 +21,34 @@ static const char *TAG = "APP_MAIN";
 // Queues
 static QueueHandle_t g_button_queue;
 static QueueHandle_t g_i2c_queue;
-static QueueHandle_t g_fireman_sample_queue;
+static QueueHandle_t g_temperature_queue;
 
 // ---------------- Button event consumer ----------------
 // (Button events now consumed by director GUI task.)
 
-// Helper to send an I2C request and wait for a response of a given type.
-// Response queue is created per request to keep interface simple for test code.
-static esp_err_t i2c_send_and_wait(i2c_msg_t *msg, void *out_buf, size_t out_size, TickType_t timeout_ticks) {
-	QueueHandle_t resp_q = xQueueCreate(1, out_size);
-	if (!resp_q) return ESP_ERR_NO_MEM;
-	msg->response_queue = resp_q;
-	if (xQueueSend(g_i2c_queue, msg, pdMS_TO_TICKS(50)) != pdTRUE) {
-		vQueueDelete(resp_q);
-		return ESP_ERR_TIMEOUT;
-	}
-	if (xQueueReceive(resp_q, out_buf, timeout_ticks) != pdTRUE) {
-		vQueueDelete(resp_q);
-		return ESP_ERR_TIMEOUT;
-	}
-	vQueueDelete(resp_q);
-	return ESP_OK;
-}
-
-// ---------------- I2C test sequence ----------------
-static void i2c_test_task(void *arg) {
-	vTaskDelay(pdMS_TO_TICKS(500)); // allow peripheral setup
-
-	// 1) Request PD fixed voltage to 9V just for test
-	{
-		bool pd_result = false;
-		i2c_msg_t msg = {0};
-		msg.type = I2C_MSG_PD_SET_PDO;
-		msg.data.pd_set.set_voltage = 9; // valid values: 5, 9, 15, 20
-		esp_err_t err = i2c_send_and_wait(&msg, &pd_result, sizeof(pd_result), pdMS_TO_TICKS(1000));
-		ESP_LOGI(TAG, "PD SET PDO -> err=%s result=%d", esp_err_to_name(err), (int)pd_result);
-	}
-
-	// 2) Read both ADC channels
-	{
-		adc_result_t adc = {0};
-		i2c_msg_t msg = {0};
-		msg.type = I2C_MSG_ADC_READ_BOTH;
-		esp_err_t err = i2c_send_and_wait(&msg, &adc, sizeof(adc), pdMS_TO_TICKS(1000));
-		ESP_LOGI(TAG, "ADC BOTH -> err=%s ch1=%.3f ch2=%.3f", esp_err_to_name(err), adc.chan1, adc.chan2);
-	}
-
-	// 3) Read ambient temperature sensor
-	{
-		ambient_temp_result_t amb = {0};
-		i2c_msg_t msg = {0};
-		msg.type = I2C_MSG_READ_AMBIENT_TEMP;
-		esp_err_t err = i2c_send_and_wait(&msg, &amb, sizeof(amb), pdMS_TO_TICKS(1000));
-		ESP_LOGI(TAG, "Ambient Temp -> err=%s T=%.2f C", esp_err_to_name(err), amb.ambientTemp);
-	}
-
-	// 4) Periodic ADC poll as demonstration
-	while (1) {
-		adc_result_t adc = {0};
-		i2c_msg_t msg = {0};
-		msg.type = I2C_MSG_ADC_READ_BOTH;
-		if (i2c_send_and_wait(&msg, &adc, sizeof(adc), pdMS_TO_TICKS(500)) == ESP_OK) {
-			ESP_LOGI(TAG, "ADC periodic ch1=%.3f ch2=%.3f", adc.chan1, adc.chan2);
-		}
-		vTaskDelay(pdMS_TO_TICKS(2000));
-	}
-}
-
 void app_main(void) {
-	// Initialize persistent settings (loads from NVS or applies defaults)
-	wiseman_init();
-
 	// Create queues
-	g_button_queue          = xQueueCreate(32, sizeof(event_msg_t));
-	g_i2c_queue             = xQueueCreate(10, sizeof(i2c_msg_t));
-	g_fireman_sample_queue  = xQueueCreate(1, sizeof(fireman_sample_t)); // single-slot latest sample
+	ap33772s_caps_t pd_caps = {0};
 
-	if (!g_button_queue || !g_i2c_queue || !g_fireman_sample_queue) {
+	g_button_queue      = xQueueCreate(32, sizeof(event_msg_t));
+	g_i2c_queue         = xQueueCreate(10, sizeof(i2c_msg_t));
+	g_temperature_queue = xQueueCreate(1,  sizeof(fireman_sample_t)); // single-slot latest sample
+
+	if (!g_button_queue || !g_i2c_queue || !g_temperature_queue) {
 		ESP_LOGE(TAG, "Failed to create queues");
 		return;
 	}
 
-	// Start subsystems
-	esp_err_t ret = switchboard_init(g_button_queue);
-	if (ret != ESP_OK) {
-		ESP_LOGE(TAG, "Switchboard initialization failed: %s", esp_err_to_name(ret));
-		return;
-	}
-
-	i2c_task_start(g_i2c_queue);
-	// Wait (up to 1s) for I2C task to finish device setup so PD caps are ready before director
-	{
-		SemaphoreHandle_t sem = i2c_get_ready_semaphore();
-		if (sem) {
-			if (xSemaphoreTake(sem, pdMS_TO_TICKS(1000)) != pdTRUE) {
-				ESP_LOGW(TAG, "I2C readiness timeout; proceeding anyway");
-			} else {
-				ESP_LOGI(TAG, "I2C subsystem ready (devices initialized)");
-			}
-		}
-	}
-	buzzer_init();
-	fireman_setup(g_i2c_queue, g_fireman_sample_queue);
-
-	// Fetch PD capabilities once after I2C ready, pass snapshot to director
-	ap33772s_caps_t pd_caps = {0};
-	i2c_msg_t pd_msg = {0};
-	pd_msg.type = I2C_MSG_PD_GET_CAPS;
-	i2c_pd_caps_resp_t caps_resp = {0};
-	if (i2c_send_and_wait(&pd_msg, &caps_resp, sizeof(caps_resp), pdMS_TO_TICKS(500)) == ESP_OK) {
-		pd_caps.fiveV = caps_resp.have5; pd_caps.cur5 = caps_resp.cur5;
-		pd_caps.nineV = caps_resp.have9; pd_caps.cur9 = caps_resp.cur9;
-		pd_caps.fifteenV = caps_resp.have15; pd_caps.cur15 = caps_resp.cur15;
-		pd_caps.twentyV = caps_resp.have20; pd_caps.cur20 = caps_resp.cur20;
-		ESP_LOGI(TAG, "PD caps snapshot acquired: 5=%d 9=%d 15=%d 20=%d", caps_resp.have5, caps_resp.have9, caps_resp.have15, caps_resp.have20);
-	} else {
-		ESP_LOGW(TAG, "Failed to get PD caps snapshot (will start director with none)");
-	}
-	director_start(g_button_queue, g_fireman_sample_queue, &pd_caps);
-	// Keep I2C test for now (optional)
-	// xTaskCreate(i2c_test_task, "i2c_test", 4096, NULL, 5, NULL);
+	// Initialize persistent settings (loads from NVS or applies defaults)
+	wiseman_init();
+	// User button input handling
+	switchboard_init(g_button_queue);
+	// i2c communication and device management
+	mailman_init(g_i2c_queue, &pd_caps);
+	// temperature regulation and heater control
+	fireman_init(g_i2c_queue, g_temperature_queue);
+	// GUI task
+	director_init(g_button_queue, g_temperature_queue, g_i2c_queue, &pd_caps);
+	// beep in the end :)
+	composer_init();
 }
