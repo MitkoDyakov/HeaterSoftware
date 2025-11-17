@@ -30,10 +30,12 @@
 #include "director.h"
 #include "switchboard/switchboard.h"
 #include "fireman/fireman.h"
-#include "mailman/mailman.h" // still needed for button events type definitions
+#include "mailman/mailman.h"  // still needed for button events type definitions
 #include "AP33772S.h"         // for ap33772s_caps_t if not already included
 #include "wiseman/wiseman.h"
 #include "wiseman/wiseman_persist.h"
+#include "director/backlight.h"
+#include "director/orientation.h"
 #include "driver/ledc.h"
 #include "pwm_alloc.h"
 #include <math.h>
@@ -195,152 +197,7 @@ static ap33772s_caps_t g_initial_pd_caps = {0};
 
 // ===================== Display & LVGL =====================
 
-// ---------------- Backlight PWM (LEDC) ----------------
-#define BACKLIGHT_LEDC_TIMER       PWM_BACKLIGHT_TIMER
-#define BACKLIGHT_LEDC_MODE        LEDC_LOW_SPEED_MODE
-#define BACKLIGHT_LEDC_CHANNEL     PWM_BACKLIGHT_CHANNEL
-#define BACKLIGHT_LEDC_DUTY_RES    LEDC_TIMER_10_BIT   // 0..1023
-#define BACKLIGHT_LEDC_FREQ_HZ     5000                // 5 kHz (no flicker)
-
-static uint16_t s_backlight_max_duty = (1u << 10) - 1; // 1023 for 10-bit
-static uint8_t  s_backlight_last_pct = 0xFF;           // force initial apply
-
-static void backlight_pwm_init(uint8_t initial_pct) {
-    // Configure timer
-    const ledc_timer_config_t timer_cfg = {
-        .speed_mode       = BACKLIGHT_LEDC_MODE,
-        .duty_resolution  = BACKLIGHT_LEDC_DUTY_RES,
-        .timer_num        = BACKLIGHT_LEDC_TIMER,
-        .freq_hz          = BACKLIGHT_LEDC_FREQ_HZ,
-        .clk_cfg          = LEDC_AUTO_CLK
-    };
-    ledc_timer_config(&timer_cfg);
-
-    // Configure channel
-    const ledc_channel_config_t ch_cfg = {
-        .gpio_num       = DISPLAY_BACKLIGHT,
-        .speed_mode     = BACKLIGHT_LEDC_MODE,
-        .channel        = BACKLIGHT_LEDC_CHANNEL,
-        .intr_type      = LEDC_INTR_DISABLE,
-        .timer_sel      = BACKLIGHT_LEDC_TIMER,
-        .duty           = 0,
-        .hpoint         = 0,
-        .flags.output_invert = 0
-    };
-    ledc_channel_config(&ch_cfg);
-
-    s_backlight_last_pct = 0xFF; // ensure set
-    // Apply initial brightness
-    uint8_t pct = initial_pct > 100 ? 100 : initial_pct;
-    // Hardware note: GPIO high turns display OFF; invert duty mapping
-    uint32_t duty = ((uint32_t)(100 - pct) * s_backlight_max_duty) / 100;
-    ledc_set_duty(BACKLIGHT_LEDC_MODE, BACKLIGHT_LEDC_CHANNEL, duty);
-    ledc_update_duty(BACKLIGHT_LEDC_MODE, BACKLIGHT_LEDC_CHANNEL);
-    s_backlight_last_pct = pct;
-}
-
-static void backlight_set_brightness(uint8_t pct) {
-    if (pct > 100) pct = 100;
-    if (pct == s_backlight_last_pct) return; // no change
-    // Hardware note: GPIO high turns display OFF; invert duty mapping
-    uint32_t duty = ((uint32_t)(100 - pct) * s_backlight_max_duty) / 100;
-    ledc_set_duty(BACKLIGHT_LEDC_MODE, BACKLIGHT_LEDC_CHANNEL, duty);
-    ledc_update_duty(BACKLIGHT_LEDC_MODE, BACKLIGHT_LEDC_CHANNEL);
-    s_backlight_last_pct = pct;
-}
-
-// ---------------- Display Tilt Detection ----------------
 static lv_display_t *s_lvgl_display = NULL;  // Global reference to LVGL display
-static bool s_display_flipped = false;       // Current orientation state
-static TickType_t s_last_tilt_change = 0;    // Debounce timing
-static bool s_last_tilt_state = false;       // Last stable tilt pin state
-
-#define TILT_DEBOUNCE_MS 50  // Debounce time in milliseconds
-
-static void display_set_orientation(bool flipped) {
-    if (!panel_handle || !s_lvgl_display) return;
-    
-    if (s_display_flipped == flipped) return; // No change needed
-    
-    s_display_flipped = flipped;
-    
-    if (flipped) {
-        // 180° rotated orientation (270° LVGL rotation + Y-axis mirror)
-        ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, false, true));
-        lv_display_set_rotation(s_lvgl_display, LV_DISPLAY_ROTATION_270);
-    } else {
-        // Normal orientation (90° LVGL rotation + X-axis mirror)
-        ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
-        lv_display_set_rotation(s_lvgl_display, LV_DISPLAY_ROTATION_90);
-    }
-    
-    ESP_LOGI("director.tilt", "Display orientation: %s", flipped ? "normal" : "rotated 180°");
-}
-
-static void tilt_gpio_init(void) {
-    gpio_config_t io_conf = {
-        .intr_type = GPIO_INTR_DISABLE,
-        .mode = GPIO_MODE_INPUT,
-        .pin_bit_mask = (1ULL << DISPLAY_TILT),
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .pull_up_en = GPIO_PULLUP_ENABLE
-    };
-    gpio_config(&io_conf);
-    
-    // Initialize tilt state
-    s_last_tilt_state = gpio_get_level(DISPLAY_TILT);
-    s_last_tilt_change = xTaskGetTickCount();
-    
-    ESP_LOGI("director.tilt", "Tilt GPIO initialized (pin %d, pull-up enabled, initial state: %d)", 
-             DISPLAY_TILT, s_last_tilt_state);
-}
-
-// ---------------- Button Remapping for Display Rotation ----------------
-static uint8_t remap_button_for_orientation(uint8_t original_btn_id) {
-    ESP_LOGI("director.page", "button %u", original_btn_id);
-
-    if (!s_display_flipped) {
-        return original_btn_id; // No remapping needed for normal orientation
-    }
-
-    // When display is rotated 180°, remap buttons to maintain logical positions
-    // Physical button -> Logical position after 180° rotation
-    switch (original_btn_id) {
-        case BUTTON_RIGHT_TOP:    return BUTTON_LEFT_BOTTOM;  // RIGHT_TOP (41) -> RIGHT_BOTTOM (40)
-        case BUTTON_RIGHT_CENTER: return BUTTON_LEFT_CENTER;  // RIGHT_CENTER (42) -> LEFT_CENTER (48)
-        case BUTTON_RIGHT_BOTTOM: return BUTTON_LEFT_TOP;  // RIGHT_BOTTOM (40) -> RIGHT_TOP (41)
-        case BUTTON_LEFT_TOP:     return BUTTON_RIGHT_BOTTOM;  // LEFT_TOP (35) -> LEFT_BOTTOM (47)
-        case BUTTON_LEFT_CENTER:  return BUTTON_RIGHT_CENTER;  // LEFT_CENTER (48) -> RIGHT_CENTER (42)
-        case BUTTON_LEFT_BOTTOM:  return BUTTON_RIGHT_TOP;  // LEFT_BOTTOM (47) -> LEFT_TOP (35)
-        default: 
-            ESP_LOGW("director.btn", "Unknown button ID %d, no remapping", original_btn_id);
-            return original_btn_id;
-    }
-}
-
-static void tilt_check_and_update(void) {
-    if (!s_lvgl_display) return;
-    
-    bool current_state = gpio_get_level(DISPLAY_TILT);
-    TickType_t now = xTaskGetTickCount();
-    
-    // Check if state changed
-    if (current_state != s_last_tilt_state) {
-        s_last_tilt_change = now;
-        s_last_tilt_state = current_state;
-        return; // Wait for debounce
-    }
-    
-    // Check if debounce time has passed
-    TickType_t elapsed = now - s_last_tilt_change;
-    if (elapsed < pdMS_TO_TICKS(TILT_DEBOUNCE_MS)) {
-        return; // Still in debounce period
-    }
-    
-    // State is stable, update display orientation
-    // Invert logic: LOW (ground) = flipped orientation, HIGH (pull-up) = normal
-    display_set_orientation(!current_state);
-}
 
 uint8_t opStat = 0; // 0=stopped, 1=running
 
@@ -424,7 +281,7 @@ void lvgl_init_display(void)
         initial_brightness = 5;
         wiseman_set_display_brightness(initial_brightness);
     }
-    backlight_pwm_init(initial_brightness);
+    backlight_init(initial_brightness);
     // Create LVGL display
     lv_display_t *lvDisplay = lv_display_create(135, 240);
     s_lvgl_display = lvDisplay; // Store global reference for runtime rotation
@@ -438,13 +295,9 @@ void lvgl_init_display(void)
     };
     ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, lvDisplay));
     
-    // Initialize tilt detection GPIO
-    tilt_gpio_init();
     
-    // Set initial display orientation based on tilt pin state
-    s_display_flipped = false; // Current state matches 270° rotation + Y-mirror
-    // Invert logic: LOW (ground) = flipped orientation, HIGH (pull-up) = normal
-    display_set_orientation(!gpio_get_level(DISPLAY_TILT));
+    // Initialize orientation detection and set initial display orientation  
+    orientation_init(s_lvgl_display, panel_handle);
 }
  
 // ===================== UI Clock via LVGL timer =====================
@@ -653,10 +506,10 @@ static void director_task(void *arg)
         while (xQueueReceive(g_button_queue, &msg, 0) == pdTRUE) {
             // Remap button ID based on display orientation
             uint8_t original_btn_id = msg.btn_id;
-            msg.btn_id = remap_button_for_orientation(msg.btn_id);
+            msg.btn_id = orientation_remap_button(msg.btn_id);
             
             ESP_LOGD("director.btn", "btn id=%d->%d event=%d page=%u flipped=%d", 
-                     original_btn_id, msg.btn_id, msg.event, current_page, s_display_flipped);
+                     original_btn_id, msg.btn_id, msg.event, current_page, orientation_is_flipped());
             
             // Update inactivity timer and handle wake on any button while sleeping
             s_last_input_tick = xTaskGetTickCount();
@@ -725,7 +578,7 @@ static void director_task(void *arg)
         lv_timer_handler();
         
         // Check tilt pin and update display orientation if needed
-        tilt_check_and_update();
+        orientation_check_and_update();
         
         // Update runtime display approximately once per loop (10ms delay below) but only when minute count changes.
         static uint32_t s_last_runtime_min = 0xFFFFFFFFu; // force first update

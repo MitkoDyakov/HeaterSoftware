@@ -11,6 +11,8 @@ idf_component_register(
         "wiseman/wiseman.c"
         "wiseman/wiseman_persist.c"
         "director/director.c"
+        "director/backlight.c"
+        "director/orientation.c"
         "director/HeaterGUI/HeaterGUI_gen.c"
         "director/HeaterGUI/HeaterGUI.c"
         "director/HeaterGUI/ui.c"
