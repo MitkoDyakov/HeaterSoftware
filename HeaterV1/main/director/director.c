@@ -449,11 +449,11 @@ static void director_task(void *arg)
     // (Input scanning handled by switchboard module; we just consume events.)
     const wiseman_settings_t *ws_cur = wiseman_get();
     if (ws_cur) {
-    uint8_t b = ws_cur->display_brightness < 5 ? 5 : ws_cur->display_brightness;
-    backlight_set_brightness(b);
+        uint8_t b = ws_cur->display_brightness < 5 ? 5 : ws_cur->display_brightness;
+        backlight_set_brightness(b);
         lv_subject_set_int(&targetTemp, ws_cur->setpoint1_c);
         lv_subject_set_int(&default_temp, ws_cur->setpoint1_c);
-    lv_subject_set_int(&brightness, (int)(ws_cur->display_brightness < 5 ? 5 : ws_cur->display_brightness));
+        lv_subject_set_int(&brightness, (int)(ws_cur->display_brightness < 5 ? 5 : ws_cur->display_brightness));
         lv_subject_set_int(&sleepTimer, ws_cur->sleep_timeout_s);
         lv_subject_copy_string(&soundEnable, ws_cur->sound_enabled ? "ON" : "OFF");
         if (ws_cur->heater1_enabled && ws_cur->heater2_enabled) {

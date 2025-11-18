@@ -3,12 +3,13 @@
 #include <unistd.h>
 #include "esp_log.h"
 
-void AP33772S_UpdatePdoList(void);
+bool AP33772S_UpdatePdoList(void);
 void parsePDOlist();
 
 #define WRITE_BUFF_LENGTH         3
 #define I2C_TOOL_TIMEOUT_VALUE_MS (50u)
 i2c_master_dev_handle_t pdDevice;
+SRC_SPRandEPR_PDO_Fields SRC_SPRandEPRpdoArray[MAX_PDO_ENTRIES] = {0}; 
 
 // Generic fixed PDO entry (extensible for additional voltages or types later)
 // NOTE: Legacy pdo_reg_t removed; higher layers now derive availability via ap33772s_get_caps()
@@ -37,41 +38,58 @@ static const ap33772s_fixed_pdo_t* find_voltage(uint16_t mv){
   return NULL;
 }
 
-SRC_SPRandEPR_PDO_Fields SRC_SPRandEPRpdoArray[MAX_PDO_ENTRIES] = {0}; 
-
-bool AP33772S_setup(i2c_master_dev_handle_t devHandler)
-{
+bool AP33772S_setup(i2c_master_dev_handle_t devHandler) {
   pdDevice = devHandler;
   ESP_LOGI("pd", "AP33772S setup start");
-  AP33772S_UpdatePdoList();
+  
+  if (!AP33772S_UpdatePdoList()) {
+    ESP_LOGE("pd", "AP33772S setup failed - could not read PDO list");
+    return false;
+  }
+  
   const ap33772s_fixed_pdo_t *p5 = find_voltage(5000);
   const ap33772s_fixed_pdo_t *p9 = find_voltage(9000);
   const ap33772s_fixed_pdo_t *p15 = find_voltage(15000);
   const ap33772s_fixed_pdo_t *p20 = find_voltage(20000);
   ESP_LOGI("pd", "AP33772S setup complete five=%d nine=%d fifteen=%d twenty=%d (tracked=%u)",
            p5?1:0, p9?1:0, p15?1:0, p20?1:0, g_caps_snapshot.count);
+           
   return true;
 }
 
-void AP33772S_UpdatePdoList(void)
-{
+bool AP33772S_UpdatePdoList(void) {
+  // Poll status register until device is ready
+  uint8_t status_reg = CMD_STATUS;
+  uint8_t status_data = 0;
+  esp_err_t ret;
+
+  ESP_LOGI("pd", "Polling AP33772S status for ready bit...");
+  
+  ret = i2c_master_transmit_receive(pdDevice, &status_reg, 1, &status_data, 1, I2C_TOOL_TIMEOUT_VALUE_MS);
+
+  // Check if ready flag is set
+  if (!(status_data & READY_MSK)) {
+    ESP_LOGE("pd", "AP33772S ready flag not set");
+    return false;
+  }
+
+  // Ready flag is set, now read the PDO capabilities
   uint8_t reg_addr = CMD_SRCPDO;
   uint8_t rx_data[26] = {0};
 
-  esp_err_t ret = i2c_master_transmit_receive(pdDevice, &reg_addr, 1, rx_data, 26, I2C_TOOL_TIMEOUT_VALUE_MS);
+  ret = i2c_master_transmit_receive(pdDevice, &reg_addr, 1, rx_data, 26, I2C_TOOL_TIMEOUT_VALUE_MS);
   ESP_LOGI("pd", "Read SRCPDO ret=%d", (int)ret);
 
-  if (ret == ESP_OK) {
-    for (uint8_t i = 0; i < 26; i += 2) {
-      // Store the bytes in the array of structs
-      uint8_t pdoIndex = (i / 2);  // Calculate the PDO index
-      SRC_SPRandEPRpdoArray[pdoIndex].byte0 = rx_data[i];
-      SRC_SPRandEPRpdoArray[pdoIndex].byte1 = rx_data[i + 1];
-    }
-    parsePDOlist();
-  } else {
-    ESP_LOGW("pd", "Failed to read PDO list ret=%d", (int)ret);
+  for (uint8_t i = 0; i < 26; i += 2) {
+    // Store the bytes in the array of structs
+    uint8_t pdoIndex = (i / 2);  // Calculate the PDO index
+    SRC_SPRandEPRpdoArray[pdoIndex].byte0 = rx_data[i];
+    SRC_SPRandEPRpdoArray[pdoIndex].byte1 = rx_data[i + 1];
   }
+
+  parsePDOlist();
+
+  return true;
 }
 
 void parsePDOlist()

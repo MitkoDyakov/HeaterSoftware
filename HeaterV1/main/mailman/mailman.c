@@ -14,7 +14,7 @@
 
 #define I2C_MASTER_PORT      0
 #define I2C_MASTER_FREQ_HZ   400000
-
+#define MAX_PD_RETRIES       10 
 // Device handles for I2C devices (new driver API)
 static i2c_master_dev_handle_t ads7142_handle = NULL;
 static i2c_master_dev_handle_t ap33772s_handle = NULL;
@@ -132,15 +132,26 @@ void mailman_init(QueueHandle_t queue, ap33772s_caps_t *pd_caps) {
     ESP_ERROR_CHECK(i2c_master_bus_add_device(g_bus_handle, &TMP110_cfg, &TMP110_handle));
     
     // Device setup (all synchronous)
-    AP33772S_setup(ap33772s_handle);
+    // Setup ADS7142 and TMP110 first (no dependencies)
     ADS7142_setup(ads7142_handle);
     TMP110_setup(TMP110_handle);
     
-    // Get PD capabilities (now cached by AP33772S_setup)
-    if (pd_caps) {
-        ap33772s_get_caps(pd_caps);
-    }
+    // AP33772S setup with retry logic
+    uint8_t retry_count = 0;
+    ESP_LOGI("mailman", "Initializing AP33772S with retry logic...");    
     
+    while (retry_count < MAX_PD_RETRIES) 
+    {
+        if (AP33772S_setup(ap33772s_handle)) {
+            ap33772s_get_caps(pd_caps);
+            break;
+        } else {
+            ESP_LOGW("mailman", "AP33772S setup failed, retrying in 100ms...");
+            vTaskDelay(pdMS_TO_TICKS(100)); // Wait 100 milliseconds between retries     
+            retry_count++;       
+        }
+    }
+        
     xTaskCreate(mailman_task, "mailman_task", 4096, (void *)queue, 10, NULL);
 }
 
