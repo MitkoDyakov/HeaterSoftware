@@ -13,6 +13,7 @@ idf_component_register(
         "director/director.c"
         "director/backlight.c"
         "director/orientation.c"
+        "director/timekeeper.c"
         "director/HeaterGUI/HeaterGUI_gen.c"
         "director/HeaterGUI/HeaterGUI.c"
         "director/HeaterGUI/ui.c"
