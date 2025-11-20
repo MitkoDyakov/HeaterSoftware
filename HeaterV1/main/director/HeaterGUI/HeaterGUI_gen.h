@@ -102,6 +102,7 @@ extern lv_subject_t ch2_temp_small;
 extern lv_subject_t pageSelect;
 extern lv_subject_t targetTemp;
 extern lv_subject_t opTime;
+extern lv_subject_t opTimeVisible;
 extern lv_subject_t command;
 extern lv_subject_t settingsSelect;
 extern lv_subject_t default_temp;

@@ -36,6 +36,7 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
     LV_TRACE_OBJ_CREATE("begin");
 
     static lv_style_t main;
+    static lv_style_t visible;
 
     static bool style_inited = false;
 
@@ -47,6 +48,9 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
         lv_style_set_margin_all(&main, 0);
         lv_style_set_border_width(&main, 0);
         lv_style_set_text_font(&main, font_start_card);
+        
+        lv_style_init(&visible);
+        lv_style_set_text_opa(&visible, 0);
 
         style_inited = true;
     }
@@ -58,13 +62,11 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
     lv_obj_t * lv_image_0 = lv_image_create(lv_obj_0);
     lv_image_set_src(lv_image_0, start_bg);
 
-
     lv_obj_t * lv_label_0 = lv_label_create(lv_obj_0);
     lv_obj_set_style_text_align(lv_label_0, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_bind_text(lv_label_0, command, NULL);lv_obj_set_x(lv_label_0, 70);
     lv_obj_set_width(lv_label_0, 65);
     lv_obj_set_height(lv_label_0, 40);
-
 
     lv_obj_t * lv_label_1 = lv_label_create(lv_obj_0);
     lv_obj_set_style_text_align(lv_label_1, LV_TEXT_ALIGN_CENTER, 0);
@@ -73,7 +75,8 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
     lv_obj_set_width(lv_label_1, 70);
     lv_obj_set_height(lv_label_1, 40);
 
-
+    lv_obj_add_style(lv_label_1, &visible, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_1, &opTimeVisible, LV_STATE_CHECKED, 0);
 
     LV_TRACE_OBJ_CREATE("finished");
 

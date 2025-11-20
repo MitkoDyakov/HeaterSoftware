@@ -95,6 +95,7 @@ lv_subject_t ch2_temp_small;
 lv_subject_t pageSelect;
 lv_subject_t targetTemp;
 lv_subject_t opTime;
+lv_subject_t opTimeVisible;
 lv_subject_t command;
 lv_subject_t settingsSelect;
 lv_subject_t default_temp;
@@ -187,6 +188,7 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_subject_init_int(&ch2_temp_small, 0);
     lv_subject_init_int(&pageSelect, 0);
     lv_subject_init_int(&targetTemp, 30);
+    lv_subject_init_int(&opTimeVisible, 1);
     static char opTime_buf[UI_SUBJECT_STRING_LENGTH];
     static char opTime_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&opTime,

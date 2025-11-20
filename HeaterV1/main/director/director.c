@@ -40,6 +40,7 @@
 #include "pwm_alloc.h"
 #include <math.h>
 #include "pinout.h"
+#include "timekeeper.h"
 
 // ===================== DEFINITIONS AND MACROS =====================
 
@@ -86,9 +87,9 @@ static TickType_t s_last_input_tick = 0;      // last button activity (for inact
 static esp_timer_handle_t lv_tick_timer = NULL;
 
 // op time counters
-static uint8_t timer_ss = 0;
-static uint8_t timer_mm = 0;
-static uint8_t timer_hh = 0;
+// static uint8_t timer_ss = 0;
+// static uint8_t timer_mm = 0;
+// static uint8_t timer_hh = 0;
 
 static QueueHandle_t g_button_queue = NULL; /* Provided by main (switchboard) */
 static QueueHandle_t g_jumbo_queue  = NULL; /* Fireman sample queue */
@@ -103,7 +104,7 @@ static void *lvBuffer1;
 static void *lvBuffer2;
 
 // UI Clock via LVGL timer
-static lv_timer_t *ui_clock_timer = NULL;
+// static lv_timer_t *ui_clock_timer = NULL;
 static lv_timer_t *settings_blink_timer = NULL; // runs independent of op clock
 static lv_timer_t *sleep_check_timer = NULL;    // checks inactivity for display sleep
 
@@ -118,7 +119,7 @@ static lv_obj_t * find_obj_by_name(lv_obj_t * root, const char * name);
 static void load_page(uint8_t page_id);
 static void unload_page(uint8_t page_id);
 static void lv_tick_cb(void* arg);
-static void ui_clock_cb(lv_timer_t *t);
+// static void ui_clock_cb(lv_timer_t *t);
 static void settings_blink_cb(lv_timer_t *t);
 static void display_apply_user_brightness(void);
 static void sleep_check_cb(lv_timer_t *t);
@@ -328,20 +329,20 @@ void lvgl_init_display(void)
     orientation_init(s_lvgl_display, panel_handle);
 }
 
-static void ui_clock_cb(lv_timer_t *t) {
-    (void)t;
-    // update counters
-    timer_ss++;
-    if (timer_ss == 60) { timer_ss = 0; timer_mm++; }
-    if (timer_mm == 60) { timer_mm = 0; timer_hh++; }
-    if (timer_hh == 99) { timer_hh = 0; }
+// static void ui_clock_cb(lv_timer_t *t) {
+//     (void)t;
+//     // update counters
+//     timer_ss++;
+//     if (timer_ss == 60) { timer_ss = 0; timer_mm++; }
+//     if (timer_mm == 60) { timer_mm = 0; timer_hh++; }
+//     if (timer_hh == 99) { timer_hh = 0; }
 
-    // update label (safe: LVGL task)
-    char text[10];
-    if (timer_ss & 1)  snprintf(text, sizeof(text), "%02u %02u", timer_hh, timer_mm);
-    else               snprintf(text, sizeof(text), "%02u:%02u", timer_hh, timer_mm);
-    lv_subject_copy_string(&opTime, text);
-}
+//     // update label (safe: LVGL task)
+//     char text[10];
+//     if (timer_ss & 1)  snprintf(text, sizeof(text), "%02u %02u", timer_hh, timer_mm);
+//     else               snprintf(text, sizeof(text), "%02u:%02u", timer_hh, timer_mm);
+//     lv_subject_copy_string(&opTime, text);
+// }
 
 static void settings_blink_cb(lv_timer_t *t) {
     (void)t;
@@ -446,8 +447,8 @@ static void director_task(void *arg)
     }
 
     // Create the LVGL clock timer (start paused; we control via button)
-    ui_clock_timer = lv_timer_create(ui_clock_cb, 1000, NULL);
-    lv_timer_pause(ui_clock_timer);
+    // ui_clock_timer = lv_timer_create(ui_clock_cb, 1000, NULL);
+    // lv_timer_pause(ui_clock_timer);
     // Create always-on blink timer for Settings selection (faster blink)
     settings_blink_timer = lv_timer_create(settings_blink_cb, 500, NULL);
     // Initialize last input time and create inactivity sleep checker
@@ -612,14 +613,16 @@ bool director_init(QueueHandle_t button_event_queue, QueueHandle_t sample_queue,
 
     // Set global variables directly
     g_button_queue = button_event_queue;
-    g_jumbo_queue = sample_queue;
-    g_i2c_queue = i2c_queue;
+    g_jumbo_queue  = sample_queue;
+    g_i2c_queue    = i2c_queue;
     
     if (initial_pd_caps) {
         g_initial_pd_caps = *initial_pd_caps;
     } else {
         memset(&g_initial_pd_caps, 0, sizeof(g_initial_pd_caps));
     }
+
+    timekeeper_init();
 
     BaseType_t ok = xTaskCreate(director_task, "director", 12288, NULL, 6, NULL);
     return (ok == pdPASS);
@@ -630,9 +633,9 @@ void page_main(event_msg_t msg){
         switch (msg.btn_id) {
             case BUTTON_RIGHT_BOTTOM: { // "RIGHT_BOTTOM" (START/STOP)
                 opStat = !opStat;
-                if (opStat) {
-                    lv_subject_copy_string(&command, "STOP");
-                    lv_timer_resume(ui_clock_timer);
+                if (opStat) {                    
+                    // lv_timer_resume(ui_clock_timer);
+                    timekeeper_start_stopwatch();
                     // START pressed: configure heaters
                     int target = lv_subject_get_int(&targetTemp);
                     if (target < 0) target = 0; else if (target > 60) target = 60;
@@ -665,11 +668,8 @@ void page_main(event_msg_t msg){
                         ESP_LOGI("director.pd", "START no higher PD voltage available (stay at 5V)");
                     }
                     ESP_LOGI("director.heaters", "Heaters START target=%dC ch1=%d ch2=%d", target, en1, en2);
-                } else {
-                    lv_subject_copy_string(&command, "START");
-                    timer_ss = timer_mm = timer_hh = 0;
-                    lv_subject_copy_string(&opTime, "00:00");
-                    lv_timer_pause(ui_clock_timer);
+                } else {                    
+                    timekeeper_stop_stopwatch();  
                     // STOP pressed: disable both heaters (setpoints retained for next start)
                     fireman_set_heater1_enabled(false);
                     fireman_set_heater2_enabled(false);

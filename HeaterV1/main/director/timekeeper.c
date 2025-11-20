@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include "lvgl.h"
 #include "HeaterGUI_gen.h"
+#include "string.h"
 
 #define TIMEKEEPER_PERIOD_MS 1000
 
@@ -14,7 +15,8 @@ enum {
 };
 
 // UI Clock via LVGL timer
-static TimerHandle_t timekeeper_timer = NULL;
+static TimerHandle_t timekeeper_main_timer = NULL;
+static TimerHandle_t timekeeper_edit_timer = NULL;
 
 // op time counters
 static uint8_t timer_ss = 0;
@@ -25,6 +27,18 @@ static uint8_t target_timer_hh = 0;
 static uint8_t timekeeper_mode = STOPWATCH;
 
 void (*callback_function)(void) = NULL;
+
+bool visible_flag = false;
+
+static void timekeeper_edit_cb(TimerHandle_t t) {
+    if (visible_flag) {
+        visible_flag = false;
+        lv_subject_set_int(&opTimeVisible, 0);
+    } else {
+        visible_flag = true;
+        lv_subject_set_int(&opTimeVisible, 1);
+    }   
+}
 
 static void timekeeper_cb(TimerHandle_t t) {
     (void)t;
@@ -54,7 +68,7 @@ static void timekeeper_cb(TimerHandle_t t) {
         }
 
         if (timer_hh == 99 && timer_mm == 59) {
-            xTimerStop(timekeeper_timer, 0);
+            xTimerStop(timekeeper_main_timer, 0);
         }
     }
 
@@ -69,7 +83,7 @@ static void timekeeper_cb(TimerHandle_t t) {
         }
 
         if (remaining_hh == 0 && remaining_mm == 0) {
-            xTimerStop(timekeeper_timer, 0);
+            xTimerStop(timekeeper_main_timer, 0);
             if (callback_function != NULL) {
                 callback_function();    
             }
@@ -81,7 +95,9 @@ static void timekeeper_cb(TimerHandle_t t) {
 
 void timekeeper_init(void)
 {
-    timekeeper_timer = xTimerCreate("timekpr", pdMS_TO_TICKS(TIMEKEEPER_PERIOD_MS), pdTRUE, NULL, timekeeper_cb);
+    timekeeper_main_timer = xTimerCreate("timekpr", pdMS_TO_TICKS(TIMEKEEPER_PERIOD_MS), pdTRUE, NULL, timekeeper_cb);
+    timekeeper_edit_timer = xTimerCreate("timekpr_edit", pdMS_TO_TICKS(850), pdTRUE, NULL, timekeeper_edit_cb);
+
     timer_ss = 0;
     timer_mm = 0;
     timer_hh = 0;
@@ -93,15 +109,18 @@ void timekeeper_init(void)
 void timekeeper_start_stopwatch(void)
 {
     timekeeper_mode = STOPWATCH;
-    xTimerStart(timekeeper_timer, 0);
+    xTimerStart(timekeeper_main_timer, 0);
+    lv_subject_copy_string(&command, "STOP");
 }
 
 void timekeeper_stop_stopwatch(void)
 {
-    xTimerStop(timekeeper_timer, 0);
+    xTimerStop(timekeeper_main_timer, 0);
     timer_ss = 0;
     timer_mm = 0;
     timer_hh = 0;
+    lv_subject_copy_string(&command, "START");
+    lv_subject_copy_string(&opTime, "00:00");
 }
 
 bool timekeeper_start_timer(uint8_t hours, uint8_t minutes, void (*callback)(void))
@@ -128,11 +147,12 @@ bool timekeeper_start_timer(uint8_t hours, uint8_t minutes, void (*callback)(voi
         return false;
     }
 
-    xTimerStop(timekeeper_timer, 0);
+    xTimerStop(timekeeper_main_timer, 0);
     target_timer_mm = minutes;
     target_timer_hh = hours;
     timekeeper_mode = TIMER;
-    xTimerStart(timekeeper_timer, 0);
+    xTimerStart(timekeeper_main_timer, 0);
+    lv_subject_copy_string(&command, "STOP");
 
     return true;
 }
@@ -142,6 +162,69 @@ void timekeeper_stop_timer(void)
     timer_ss = 0;
     timer_mm = 0;
     timer_hh = 0;
-    xTimerStop(timekeeper_timer, 0);
+    xTimerStop(timekeeper_main_timer, 0);
+    lv_subject_copy_string(&command, "START");
+    lv_subject_copy_string(&opTime, "00:00");
 }
 
+void timekeeper_increment_hour(void)
+{
+    char text[10];
+    target_timer_hh++;
+    if (target_timer_hh > 99)
+    {
+        target_timer_hh = 0;
+    }
+
+    snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
+    lv_subject_copy_string(&opTime, text);
+}
+
+void timekeeper_decrement_hour(void)
+{
+    char text[10];
+    target_timer_hh--;
+    if (target_timer_hh == 0)
+    {
+        target_timer_hh = 99;
+    }
+
+    snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
+    lv_subject_copy_string(&opTime, text);
+}
+
+void timekeeper_increment_minute(void)
+{
+    char text[10];
+    target_timer_mm++;
+    if (target_timer_mm > 59)
+    {
+        target_timer_mm = 0;
+    }
+
+    snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
+    lv_subject_copy_string(&opTime, text);
+}   
+void timekeeper_decrement_minute(void)
+{
+    char text[10];
+    target_timer_mm--;
+    if (target_timer_mm == 0)
+    {
+        target_timer_mm = 59;
+    }
+
+    snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
+    lv_subject_copy_string(&opTime, text);
+}   
+
+void timekeeper_timer_start_edit(void)
+{
+    xTimerStart(timekeeper_edit_timer, 0);
+}   
+
+void timekeeper_timer_stop_edit(void)
+{
+    lv_subject_set_int(&opTimeVisible, 1);
+    xTimerStop(timekeeper_edit_timer, 0);   
+}   
