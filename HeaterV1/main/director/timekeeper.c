@@ -6,6 +6,7 @@
 #include "lvgl.h"
 #include "HeaterGUI_gen.h"
 #include "string.h"
+#include "timekeeper.h"
 
 #define TIMEKEEPER_PERIOD_MS 1000
 
@@ -151,6 +152,9 @@ bool timekeeper_start_timer(uint8_t hours, uint8_t minutes, void (*callback)(voi
     target_timer_mm = minutes;
     target_timer_hh = hours;
     timekeeper_mode = TIMER;
+    timer_ss = 0;
+    timer_mm = 0;
+    timer_hh = 0;
     xTimerStart(timekeeper_main_timer, 0);
     lv_subject_copy_string(&command, "STOP");
 

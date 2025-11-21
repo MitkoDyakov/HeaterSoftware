@@ -12,5 +12,9 @@ bool timekeeper_start_timer(uint8_t hours, uint8_t minutes, void (*callback)(voi
 void timekeeper_stop_timer(void);
 void timekeeper_timer_start_edit(void);
 void timekeeper_timer_stop_edit(void);
+void timekeeper_decrement_minute(void);
+void timekeeper_increment_minute(void);
+void timekeeper_decrement_hour(void);
+void timekeeper_increment_hour(void);
 
 #endif // TIMEKEEPER_H
