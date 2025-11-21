@@ -45,6 +45,9 @@
         <string name="command" value="START"/>
 
         <!-- Settigns page -->
+        <int name="scrollPosition" value="0"/>
+        <string name="timerType" value="OFF"/>
+        <string name="orientation" value="AUTO"/>
         <int name="settingsSelect" value="0"/>
         <int name="default_temp" value="30"/>
         <string name="activeCh" value="CH1/2"/>

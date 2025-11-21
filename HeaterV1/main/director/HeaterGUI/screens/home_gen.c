@@ -94,7 +94,7 @@ lv_obj_t * home_create(void)
 
     lv_obj_t * page_container = column_create(row_0);
     lv_obj_set_width(page_container, 141);
-    lv_obj_set_height(page_container, lv_pct(100));
+    lv_obj_set_height(page_container, 126);
     lv_obj_set_style_bg_opa(page_container, 0, 0);
     lv_obj_set_name(page_container, "page_container");
     lv_obj_set_style_pad_left(page_container, 2, 0);

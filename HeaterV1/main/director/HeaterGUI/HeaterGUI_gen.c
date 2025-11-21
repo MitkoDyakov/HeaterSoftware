@@ -97,6 +97,9 @@ lv_subject_t targetTemp;
 lv_subject_t opTime;
 lv_subject_t opTimeVisible;
 lv_subject_t command;
+lv_subject_t scrollPosition;
+lv_subject_t timerType;
+lv_subject_t orientation;
 lv_subject_t settingsSelect;
 lv_subject_t default_temp;
 lv_subject_t activeCh;
@@ -204,6 +207,23 @@ void HeaterGUI_init_gen(const char * asset_path)
                             command_prev_buf,
                             UI_SUBJECT_STRING_LENGTH,
                             "START"
+                          );
+    lv_subject_init_int(&scrollPosition, 0);
+    static char timerType_buf[UI_SUBJECT_STRING_LENGTH];
+    static char timerType_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&timerType,
+                            timerType_buf,
+                            timerType_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "OFF"
+                          );
+    static char orientation_buf[UI_SUBJECT_STRING_LENGTH];
+    static char orientation_prev_buf[UI_SUBJECT_STRING_LENGTH];
+    lv_subject_init_string(&orientation,
+                            orientation_buf,
+                            orientation_prev_buf,
+                            UI_SUBJECT_STRING_LENGTH,
+                            "AUTO"
                           );
     lv_subject_init_int(&settingsSelect, 0);
     lv_subject_init_int(&default_temp, 30);
@@ -320,6 +340,9 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "targetTemp", &targetTemp);
     lv_xml_register_subject(NULL, "opTime", &opTime);
     lv_xml_register_subject(NULL, "command", &command);
+    lv_xml_register_subject(NULL, "scrollPosition", &scrollPosition);
+    lv_xml_register_subject(NULL, "timerType", &timerType);
+    lv_xml_register_subject(NULL, "orientation", &orientation);
     lv_xml_register_subject(NULL, "settingsSelect", &settingsSelect);
     lv_xml_register_subject(NULL, "default_temp", &default_temp);
     lv_xml_register_subject(NULL, "activeCh", &activeCh);

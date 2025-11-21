@@ -73,9 +73,7 @@ extern lv_font_t * font_start_card;
 extern lv_font_t * font_ch_temp_big;
 extern lv_font_t * font_channel_dot;
 extern lv_font_t * font_target_temp;
-extern lv_font_t big_digit_font;
-extern lv_font_t middle_digit_font;
-extern lv_font_t small_digit_font;
+
 /*----------------
  * Images
  *----------------*/
@@ -104,6 +102,9 @@ extern lv_subject_t targetTemp;
 extern lv_subject_t opTime;
 extern lv_subject_t opTimeVisible;
 extern lv_subject_t command;
+extern lv_subject_t scrollPosition;
+extern lv_subject_t timerType;
+extern lv_subject_t orientation;
 extern lv_subject_t settingsSelect;
 extern lv_subject_t default_temp;
 extern lv_subject_t activeCh;
