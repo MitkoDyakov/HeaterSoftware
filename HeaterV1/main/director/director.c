@@ -514,7 +514,6 @@ static void director_task(void *arg)
         lv_subject_copy_string(&twentyV, "--");
     }
 
-    uint32_t loop_counter = 0;
     // (no-op)
     while (1) {
         // Drain button events here (replaces vConsoleTask)
@@ -529,6 +528,7 @@ static void director_task(void *arg)
             
             // Update inactivity timer and handle wake on any button while sleeping
             s_last_input_tick = xTaskGetTickCount();
+
             if (s_display_sleeping) {
                 ESP_LOGD("director.sleep", "Wake on button press (id=%d)", msg.btn_id);
                 display_apply_user_brightness();
@@ -539,16 +539,11 @@ static void director_task(void *arg)
 
             if(msg.btn_id == BUTTON_LEFT_BOTTOM) { // "LEFT_BOTTOM"
                 if (msg.event == BUTTON_EVENT_SHORT || msg.event == BUTTON_EVENT_REPEAT) {
-                    uint8_t prev = current_page;
                     uint8_t next = (current_page + 1) % PAGE_COUNT;
                     if (next != current_page) {
-                        unload_page(current_page);
+                        unload_page(current_page);                        
+                        load_page(next);
                         current_page = next;
-                        ESP_LOGI("director.page", "Page change %u -> %u", prev, current_page);
-                        load_page(current_page);
-                        // Log stack watermark after load
-                        UBaseType_t hw = uxTaskGetStackHighWaterMark(NULL);
-                        ESP_LOGD("director.stack", "after load page=%u high-water=%u words", current_page, (unsigned)hw);
                     }
                 }
             }else{
@@ -563,12 +558,12 @@ static void director_task(void *arg)
             }
         }
         
-        // Consume at most one fireman sample per loop (prevents lengthy drains -> WDT risk)
+        // Display temperature updates from fireman module
         if (g_jumbo_queue) {
             fireman_sample_t latest;
             if (xQueueReceive(g_jumbo_queue, &latest, 0) == pdTRUE) {
-                bool pd_fail = isnan(latest.ch1) || isnan(latest.ch2);
-                if (pd_fail) {
+                bool noData = isnan(latest.ch1) || isnan(latest.ch2);
+                if (noData) {
                     lv_subject_set_int(&ch1_temp_big, 0);
                     lv_subject_set_int(&ch1_temp_small, 0);
                     lv_subject_set_int(&ch2_temp_big, 0);
@@ -600,6 +595,7 @@ static void director_task(void *arg)
         // Update runtime display approximately once per loop (10ms delay below) but only when minute count changes.
         static uint32_t s_last_runtime_min = 0xFFFFFFFFu; // force first update
         uint32_t cur_min = wiseman_get_op_time_minutes();
+
         if (cur_min != s_last_runtime_min) {
             s_last_runtime_min = cur_min;
             // UI expects hours (integer). Convert minutes -> hours (truncate)
@@ -607,11 +603,6 @@ static void director_task(void *arg)
             lv_subject_set_int(&runTime, (int)hours);
         }
 
-        // Periodic stack watermark debug (every ~200 iterations)
-        if ((loop_counter++ & 0xFF) == 0) {
-            UBaseType_t hw = uxTaskGetStackHighWaterMark(NULL);
-            ESP_LOGD("director.stack", "high-water words=%u", (unsigned)hw);
-        }
         // Slightly longer delay to ensure IDLE gets time (watchdog feed)
         vTaskDelay(pdMS_TO_TICKS(10));
     }
