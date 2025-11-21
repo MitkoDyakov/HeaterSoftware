@@ -28,7 +28,7 @@
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
                     <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
-                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="4"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="1"/>
                     </lv_label>
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
@@ -84,7 +84,7 @@
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
                     <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
-                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="4"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="5"/>
                     </lv_label>
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">

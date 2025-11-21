@@ -137,7 +137,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_text_align(lv_label_3, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(lv_label_3, 24);
     lv_obj_add_style(lv_label_3, &selected, LV_STATE_CHECKED);
-    lv_obj_bind_state_if_eq(lv_label_3, &settingsSelect, LV_STATE_CHECKED, 4);
+    lv_obj_bind_state_if_eq(lv_label_3, &settingsSelect, LV_STATE_CHECKED, 1);
 
 
 
@@ -333,7 +333,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_text_align(lv_label_15, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_set_width(lv_label_15, 24);
     lv_obj_add_style(lv_label_15, &selected, LV_STATE_CHECKED);
-    lv_obj_bind_state_if_eq(lv_label_15, &settingsSelect, LV_STATE_CHECKED, 4);
+    lv_obj_bind_state_if_eq(lv_label_15, &settingsSelect, LV_STATE_CHECKED, 5);
 
 
 
