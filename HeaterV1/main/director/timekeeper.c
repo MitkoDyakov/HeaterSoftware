@@ -30,15 +30,18 @@ static uint8_t timekeeper_mode = STOPWATCH;
 void (*callback_function)(void) = NULL;
 
 bool visible_flag = false;
+uint8_t blinkCounter = 0;
 
 static void timekeeper_edit_cb(TimerHandle_t t) {
-    if (visible_flag) {
+    if (visible_flag && blinkCounter == 4) {
+        blinkCounter = 0;
         visible_flag = false;
         lv_subject_set_int(&opTimeVisible, 0);
     } else {
         visible_flag = true;
         lv_subject_set_int(&opTimeVisible, 1);
     }   
+    blinkCounter++;
 }
 
 static void timekeeper_cb(TimerHandle_t t) {
@@ -97,7 +100,7 @@ static void timekeeper_cb(TimerHandle_t t) {
 void timekeeper_init(void)
 {
     timekeeper_main_timer = xTimerCreate("timekpr", pdMS_TO_TICKS(TIMEKEEPER_PERIOD_MS), pdTRUE, NULL, timekeeper_cb);
-    timekeeper_edit_timer = xTimerCreate("timekpr_edit", pdMS_TO_TICKS(850), pdTRUE, NULL, timekeeper_edit_cb);
+    timekeeper_edit_timer = xTimerCreate("timekpr_edit", pdMS_TO_TICKS(300), pdTRUE, NULL, timekeeper_edit_cb);
 
     timer_ss = 0;
     timer_mm = 0;
@@ -187,12 +190,13 @@ void timekeeper_increment_hour(void)
 void timekeeper_decrement_hour(void)
 {
     char text[10];
-    target_timer_hh--;
-    if (target_timer_hh == 0)
-    {
-        target_timer_hh = 99;
-    }
 
+    if(target_timer_hh == 0)
+    {
+        target_timer_hh=99;
+    }else{
+        target_timer_hh--;
+    }    
     snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
     lv_subject_copy_string(&opTime, text);
 }
@@ -212,12 +216,12 @@ void timekeeper_increment_minute(void)
 void timekeeper_decrement_minute(void)
 {
     char text[10];
-    target_timer_mm--;
-    if (target_timer_mm == 0)
+    if(target_timer_mm == 0)
     {
         target_timer_mm = 59;
-    }
-
+    }else{
+        target_timer_mm--;
+    } 
     snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
     lv_subject_copy_string(&opTime, text);
 }   
