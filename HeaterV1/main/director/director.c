@@ -677,29 +677,6 @@ void page_power(event_msg_t msg){
     // we are not handling any button events on this page for now
 }
 
-// -------- Settings page helpers --------
-static void settings_cycle_enable(int dir) {
-    const char* cur = lv_subject_get_string(&activeCh);
-    int idx;
-    if (!cur) idx = 0;
-    else if (strcmp(cur, "CH1") == 0) idx = 1;
-    else if (strcmp(cur, "CH2") == 0) idx = 2;
-    else idx = 0; // "CH1/2"
-    idx = (idx + (dir > 0 ? 1 : -1) + 3) % 3;
-    switch(idx){
-        case 0: lv_subject_copy_string(&activeCh, "CH1/2"); break;
-        case 1: lv_subject_copy_string(&activeCh, "CH1");   break;
-        case 2: lv_subject_copy_string(&activeCh, "CH2");   break;
-    }
-}
-
-static void settings_toggle_sound(void) {
-    const char* cur = lv_subject_get_string(&soundEnable);
-    if (cur && strcmp(cur, "ON") == 0) lv_subject_copy_string(&soundEnable, "OFF");
-    else                                 lv_subject_copy_string(&soundEnable, "ON");
-}
-
-
 void page_info(event_msg_t msg){
     // we are not handling any button events on this page for now
 }
