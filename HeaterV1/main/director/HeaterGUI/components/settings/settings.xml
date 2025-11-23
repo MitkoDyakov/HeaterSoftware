@@ -35,7 +35,7 @@
                     <lv_label text="PREHEAT:" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column width="50" height="100%" style_pad_right="0"  style_bg_opa="0">
-                     <lv_label bind_text-fmt="%dm"  bind_text="preHeat" style_text_color="#maintext" style_text_align="center"/>
+                     <lv_label bind_text-fmt="%dm" bind_text="preHeat" style_text_color="#maintext" style_text_align="center"/>
                 </column>          
             </row>
             <row width="100%" height="23">
