@@ -94,8 +94,8 @@ lv_subject_t ch2_temp_big;
 lv_subject_t ch2_temp_small;
 lv_subject_t pageSelect;
 lv_subject_t targetTemp;
-lv_subject_t opTime;
 lv_subject_t opTimeVisible;
+lv_subject_t opTime;
 lv_subject_t command;
 lv_subject_t scrollPosition;
 lv_subject_t timerType;
@@ -105,6 +105,7 @@ lv_subject_t default_temp;
 lv_subject_t activeCh;
 lv_subject_t brightness;
 lv_subject_t sleepTimer;
+lv_subject_t preHeat;
 lv_subject_t soundEnable;
 lv_subject_t runTime;
 lv_subject_t swVer;
@@ -237,6 +238,7 @@ void HeaterGUI_init_gen(const char * asset_path)
                           );
     lv_subject_init_int(&brightness, 75);
     lv_subject_init_int(&sleepTimer, 30);
+    lv_subject_init_int(&preHeat, 15);
     static char soundEnable_buf[UI_SUBJECT_STRING_LENGTH];
     static char soundEnable_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&soundEnable,
@@ -338,6 +340,7 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "ch2_temp_small", &ch2_temp_small);
     lv_xml_register_subject(NULL, "pageSelect", &pageSelect);
     lv_xml_register_subject(NULL, "targetTemp", &targetTemp);
+    lv_xml_register_subject(NULL, "opTimeVisible", &opTimeVisible);
     lv_xml_register_subject(NULL, "opTime", &opTime);
     lv_xml_register_subject(NULL, "command", &command);
     lv_xml_register_subject(NULL, "scrollPosition", &scrollPosition);
@@ -348,6 +351,7 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "activeCh", &activeCh);
     lv_xml_register_subject(NULL, "brightness", &brightness);
     lv_xml_register_subject(NULL, "sleepTimer", &sleepTimer);
+    lv_xml_register_subject(NULL, "preHeat", &preHeat);
     lv_xml_register_subject(NULL, "soundEnable", &soundEnable);
     lv_xml_register_subject(NULL, "runTime", &runTime);
     lv_xml_register_subject(NULL, "swVer", &swVer);

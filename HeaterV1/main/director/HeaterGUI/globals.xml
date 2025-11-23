@@ -41,6 +41,7 @@
         <int name="ch2_temp_small" value="0"/>
         <int name="pageSelect" value="0"/>
         <int name="targetTemp" value="30"/>
+        <int name="opTimeVisible" value="1"/>
         <string name="opTime" value="00:00"/>
         <string name="command" value="START"/>
 
@@ -53,6 +54,7 @@
         <string name="activeCh" value="CH1/2"/>
         <int name="brightness" value="75"/>
         <int name="sleepTimer" value="30"/>
+        <int name="preHeat" value="15"/>
         <string name="soundEnable" value="ON"/>
 
         <!--  Info page -->

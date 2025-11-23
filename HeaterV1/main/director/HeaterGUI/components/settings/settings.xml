@@ -32,6 +32,20 @@
                     </lv_label>
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
+                    <lv_label text="PREHEAT:" style_text_color="#subtext" style_text_align="center"/>
+                </column>   
+                <column width="50" height="100%" style_pad_right="0"  style_bg_opa="0">
+                     <lv_label bind_text-fmt="%dm"  bind_text="preHeat" style_text_color="#maintext" style_text_align="center"/>
+                </column>          
+            </row>
+            <row width="100%" height="23">
+                <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
+                    <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
+                        <style name="selected" selector="checked"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="2"/>
+                    </lv_label>
+                </column>
+                <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
                     <lv_label text="TIMER:" style_text_color="#subtext" style_text_align="center"/>
                 </column>   
                 <column width="50" height="100%" style_pad_right="0"  style_bg_opa="0">
@@ -42,7 +56,7 @@
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
                     <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
-                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="2"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="3"/>
                     </lv_label> 
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
@@ -56,7 +70,7 @@
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
                     <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
-                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="3"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="4"/>
                     </lv_label>
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
@@ -70,7 +84,7 @@
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
                     <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
-                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="4"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="5"/>
                     </lv_label>
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">
@@ -84,7 +98,7 @@
                 <column width="24" height="100%" style_pad_right="0"  style_bg_opa="0" style_margin_top="-14">
                     <lv_label text="•" style_text_opa="0" style_text_font="font_channel_dot" style_text_color="#subtext" style_text_align="center" width="24">
                         <style name="selected" selector="checked"/>
-                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="5"/>
+                        <bind_state_if_eq state="checked" subject="settingsSelect" ref_value="6"/>
                     </lv_label>
                 </column>
                 <column width="67" height="100%" style_pad_right="0"  style_bg_opa="0">

@@ -148,7 +148,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_4, 0, 0);
 
     lv_obj_t * lv_label_4 = lv_label_create(column_4);
-    lv_label_set_text(lv_label_4, "TIMER:");
+    lv_label_set_text(lv_label_4, "PREHEAT:");
     lv_obj_set_style_text_color(lv_label_4, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_4, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -161,7 +161,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_5, 0, 0);
 
     lv_obj_t * lv_label_5 = lv_label_create(column_5);
-    lv_label_bind_text(lv_label_5, &timerType, NULL);lv_obj_set_style_text_color(lv_label_5, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_5, &preHeat, "%dm");lv_obj_set_style_text_color(lv_label_5, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_5, LV_TEXT_ALIGN_CENTER, 0);
 
 
@@ -197,7 +197,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_7, 0, 0);
 
     lv_obj_t * lv_label_7 = lv_label_create(column_7);
-    lv_label_set_text(lv_label_7, "SOUND:");
+    lv_label_set_text(lv_label_7, "TIMER:");
     lv_obj_set_style_text_color(lv_label_7, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_7, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -210,7 +210,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_8, 0, 0);
 
     lv_obj_t * lv_label_8 = lv_label_create(column_8);
-    lv_label_bind_text(lv_label_8, &soundEnable, NULL);lv_obj_set_style_text_color(lv_label_8, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_8, &timerType, NULL);lv_obj_set_style_text_color(lv_label_8, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_8, LV_TEXT_ALIGN_CENTER, 0);
 
 
@@ -246,7 +246,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_10, 0, 0);
 
     lv_obj_t * lv_label_10 = lv_label_create(column_10);
-    lv_label_set_text(lv_label_10, "LIGHT:");
+    lv_label_set_text(lv_label_10, "SOUND:");
     lv_obj_set_style_text_color(lv_label_10, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_10, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -259,7 +259,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_11, 0, 0);
 
     lv_obj_t * lv_label_11 = lv_label_create(column_11);
-    lv_label_bind_text(lv_label_11, &brightness, "%d%%");lv_obj_set_style_text_color(lv_label_11, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_11, &soundEnable, NULL);lv_obj_set_style_text_color(lv_label_11, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_11, LV_TEXT_ALIGN_CENTER, 0);
 
 
@@ -295,7 +295,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_13, 0, 0);
 
     lv_obj_t * lv_label_13 = lv_label_create(column_13);
-    lv_label_set_text(lv_label_13, "SLEEP:");
+    lv_label_set_text(lv_label_13, "LIGHT:");
     lv_obj_set_style_text_color(lv_label_13, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_13, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -308,7 +308,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_14, 0, 0);
 
     lv_obj_t * lv_label_14 = lv_label_create(column_14);
-    lv_label_bind_text(lv_label_14, &sleepTimer, "%ds");lv_obj_set_style_text_color(lv_label_14, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_14, &brightness, "%d%%");lv_obj_set_style_text_color(lv_label_14, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_14, LV_TEXT_ALIGN_CENTER, 0);
 
 
@@ -344,7 +344,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_16, 0, 0);
 
     lv_obj_t * lv_label_16 = lv_label_create(column_16);
-    lv_label_set_text(lv_label_16, "FLIP:");
+    lv_label_set_text(lv_label_16, "SLEEP:");
     lv_obj_set_style_text_color(lv_label_16, SUBTEXT, 0);
     lv_obj_set_style_text_align(lv_label_16, LV_TEXT_ALIGN_CENTER, 0);
 
@@ -357,8 +357,57 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_set_style_bg_opa(column_17, 0, 0);
 
     lv_obj_t * lv_label_17 = lv_label_create(column_17);
-    lv_label_bind_text(lv_label_17, &orientation, NULL);lv_obj_set_style_text_color(lv_label_17, MAINTEXT, 0);
+    lv_label_bind_text(lv_label_17, &sleepTimer, "%ds");lv_obj_set_style_text_color(lv_label_17, MAINTEXT, 0);
     lv_obj_set_style_text_align(lv_label_17, LV_TEXT_ALIGN_CENTER, 0);
+
+
+
+
+    lv_obj_t * row_6 = row_create(scrollColumn);
+    lv_obj_set_width(row_6, lv_pct(100));
+    lv_obj_set_height(row_6, 23);
+
+    lv_obj_t * column_18 = column_create(row_6);
+    lv_obj_set_width(column_18, 24);
+    lv_obj_set_height(column_18, lv_pct(100));
+    lv_obj_set_style_pad_right(column_18, 0, 0);
+    lv_obj_set_style_bg_opa(column_18, 0, 0);
+    lv_obj_set_style_margin_top(column_18, -14, 0);
+
+    lv_obj_t * lv_label_18 = lv_label_create(column_18);
+    lv_label_set_text(lv_label_18, "•");
+    lv_obj_set_style_text_opa(lv_label_18, 0, 0);
+    lv_obj_set_style_text_font(lv_label_18, font_channel_dot, 0);
+    lv_obj_set_style_text_color(lv_label_18, SUBTEXT, 0);
+    lv_obj_set_style_text_align(lv_label_18, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_set_width(lv_label_18, 24);
+    lv_obj_add_style(lv_label_18, &selected, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(lv_label_18, &settingsSelect, LV_STATE_CHECKED, 6);
+
+
+
+    lv_obj_t * column_19 = column_create(row_6);
+    lv_obj_set_width(column_19, 67);
+    lv_obj_set_height(column_19, lv_pct(100));
+    lv_obj_set_style_pad_right(column_19, 0, 0);
+    lv_obj_set_style_bg_opa(column_19, 0, 0);
+
+    lv_obj_t * lv_label_19 = lv_label_create(column_19);
+    lv_label_set_text(lv_label_19, "FLIP:");
+    lv_obj_set_style_text_color(lv_label_19, SUBTEXT, 0);
+    lv_obj_set_style_text_align(lv_label_19, LV_TEXT_ALIGN_CENTER, 0);
+
+
+
+    lv_obj_t * column_20 = column_create(row_6);
+    lv_obj_set_width(column_20, 50);
+    lv_obj_set_height(column_20, lv_pct(100));
+    lv_obj_set_style_pad_right(column_20, 0, 0);
+    lv_obj_set_style_bg_opa(column_20, 0, 0);
+
+    lv_obj_t * lv_label_20 = lv_label_create(column_20);
+    lv_label_bind_text(lv_label_20, &orientation, NULL);lv_obj_set_style_text_color(lv_label_20, MAINTEXT, 0);
+    lv_obj_set_style_text_align(lv_label_20, LV_TEXT_ALIGN_CENTER, 0);
 
 
 
