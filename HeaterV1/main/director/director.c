@@ -86,6 +86,7 @@ static bool s_settings_blink_on = false;                         // blink phase 
 static int window_start_idx = 0;                                 // first visible setting index in window
 static int window_end_idx = WINDOW_COUNT-1;   // last visible setting index in window 
 static lv_obj_t * s_scroll_column = NULL;                        // cached pointer to scrollColumn for padding updates
+static int s_last_scroll_pad_top = 0;                            // last applied pad_top to avoid redundant layout work
 
 #define ROW_HEIGHT_PX 23
 
@@ -117,8 +118,11 @@ static void settings_scroll_sync(void) {
     if (window_end_idx >= SETTINGS_COUNT) window_end_idx = SETTINGS_COUNT - 1;
 
     int pad = - (window_start_idx * ROW_HEIGHT_PX);
-    lv_obj_set_style_pad_top(s_scroll_column, pad, 0);
-    lv_obj_mark_layout_as_dirty(s_scroll_column);
+    if (pad != s_last_scroll_pad_top) {
+        s_last_scroll_pad_top = pad;
+        lv_obj_set_style_pad_top(s_scroll_column, pad, 0);
+        lv_obj_mark_layout_as_dirty(s_scroll_column);
+    }
 }
 
 // Display sleep state
