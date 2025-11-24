@@ -7,7 +7,7 @@ extern "C" {
 #endif
 
 // Versioning for settings struct; bump when format changes.
-#define WISEMAN_SETTINGS_VERSION 3
+#define WISEMAN_SETTINGS_VERSION 4
 
 // Optional: define WISEMAN_PERSIST_SYNC to skip background task and
 // perform a (debounced) immediate save from the calling context when
@@ -35,6 +35,8 @@ typedef struct {
     bool heater1_enabled;
     bool heater2_enabled;
     bool sound_enabled;       // buzzer on/off
+    bool timer_mode;          // true = timer ON, false = OFF
+    uint16_t preheat_min;     // preheat time in minutes
     uint8_t display_brightness; // 0-100 percent
     char wifi_ssid[33];       // null-terminated
     char wifi_pass[65];       // null-terminated
@@ -62,6 +64,8 @@ void wiseman_set_setpoint2(int16_t c);
 // Update both setpoints in a single mutex lock (one dirty mark if any changed)
 void wiseman_set_dual_setpoints(int16_t sp1, int16_t sp2);
 void wiseman_set_sound_enabled(bool en);
+void wiseman_set_timer_mode(bool enabled);
+void wiseman_set_preheat_minutes(uint16_t minutes);
 void wiseman_set_display_brightness(uint8_t pct);
 void wiseman_set_wifi_credentials(const char* ssid, const char* pass);
 // New mutators

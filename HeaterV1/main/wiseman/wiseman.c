@@ -26,6 +26,8 @@ static const wiseman_settings_t g_defaults = {
     .heater1_enabled = false,
     .heater2_enabled = false,
     .sound_enabled = true,
+    .timer_mode = false,
+    .preheat_min = 0,
     .display_brightness = 75,
     .wifi_ssid = "",
     .wifi_pass = "",
@@ -223,6 +225,26 @@ void wiseman_set_sound_enabled(bool en) {
     xSemaphoreTake(s_mutex, portMAX_DELAY);
     if (g_settings.sound_enabled != en) {
         g_settings.sound_enabled = en;
+        wiseman_mark_dirty();
+    }
+    xSemaphoreGive(s_mutex);
+}
+
+void wiseman_set_timer_mode(bool enabled) {
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (g_settings.timer_mode != enabled) {
+        g_settings.timer_mode = enabled;
+        wiseman_mark_dirty();
+    }
+    xSemaphoreGive(s_mutex);
+}
+
+void wiseman_set_preheat_minutes(uint16_t minutes) {
+    // Clamp reasonable range 0..30
+    if (minutes > 30) minutes = 30;
+    xSemaphoreTake(s_mutex, portMAX_DELAY);
+    if (g_settings.preheat_min != minutes) {
+        g_settings.preheat_min = minutes;
         wiseman_mark_dirty();
     }
     xSemaphoreGive(s_mutex);

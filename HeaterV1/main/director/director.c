@@ -51,7 +51,7 @@
 #define draw_buffer_sz (IMAGE_WIDTH * IMAGE_HEIGHT * JPG_BPP)          // Buffer for 10 rows
 
 // ===================== ENUMS AND TYPEDEFS =====================
-static lv_obj_t * find_obj_by_name(lv_obj_t * root, const char * name);
+lv_obj_t * find_obj_by_name(lv_obj_t * root, const char * name);
 // Page order must match the order we cycle through with LEFT_BOTTOM button.
 // The original switch in load_page treated case 1 as settings and case 2 as power, but
 // the enum previously had POWER before SETTINGS which prevented page_settings() from running.
@@ -125,7 +125,7 @@ void lvgl_init_display(void);
 
 // ===================== FUNCTION IMPLEMENTATIONS =====================
 
-static lv_obj_t * find_obj_by_name(lv_obj_t * root, const char * name) {
+lv_obj_t * find_obj_by_name(lv_obj_t * root, const char * name) {
     if (!root || !name) return NULL;
     const char * n = lv_obj_get_name(root);
     if (n && strcmp(n, name) == 0) return root;
@@ -388,6 +388,15 @@ static void director_task(void *arg)
         lv_subject_set_int(&default_temp, ws_cur->setpoint1_c);
         lv_subject_set_int(&brightness, (int)(ws_cur->display_brightness < 5 ? 5 : ws_cur->display_brightness));
         lv_subject_set_int(&sleepTimer, ws_cur->sleep_timeout_s);
+        // Reflect PREHEAT and TIMER mode on UI
+        lv_subject_set_int(&preHeat, ws_cur->preheat_min);
+        lv_subject_copy_string(&timerType, ws_cur->timer_mode ? "ON" : "OFF");
+        // Reflect orientation
+        switch(ws_cur->screen_orientation) {
+            case WISEMAN_ORIENTATION_ROTATED: lv_subject_copy_string(&orientation, "ON"); break;
+            case WISEMAN_ORIENTATION_AUTO:    lv_subject_copy_string(&orientation, "AUTO"); break;
+            default:                          lv_subject_copy_string(&orientation, "OFF"); break;
+        }
         lv_subject_copy_string(&soundEnable, ws_cur->sound_enabled ? "ON" : "OFF");
         if (ws_cur->heater1_enabled && ws_cur->heater2_enabled) {
             lv_subject_copy_string(&activeCh, "CH1/2");
@@ -672,7 +681,7 @@ void page_main(event_msg_t msg){
         }
     }
 }
-
+    
 void page_power(event_msg_t msg){
     // we are not handling any button events on this page for now
 }

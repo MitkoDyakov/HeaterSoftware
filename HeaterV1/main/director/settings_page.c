@@ -20,18 +20,7 @@ static int window_end_idx = WINDOW_COUNT - 1;  // last visible setting index in 
 static int s_last_scroll_pad_top = 0;          // last applied pad_top to avoid redundant layout work
 
 // Local helper to find object by name (duplicated from director for isolation)
-static lv_obj_t * find_obj_by_name(lv_obj_t * root, const char * name) {
-    if (!root || !name) return NULL;
-    const char * n = lv_obj_get_name(root);
-    if (n && strcmp(n, name) == 0) return root;
-    uint32_t child_cnt = lv_obj_get_child_cnt(root);
-    for (uint32_t i = 0; i < child_cnt; ++i) {
-        lv_obj_t * child = lv_obj_get_child(root, i);
-        lv_obj_t * found = find_obj_by_name(child, name);
-        if (found) return found;
-    }
-    return NULL;
-}
+lv_obj_t * find_obj_by_name(lv_obj_t * root, const char * name);
 
 // Maintain a sliding window and shift content vertically via pad_top so selected row stays visible.
 static void settings_scroll_sync(void) {
@@ -80,8 +69,23 @@ static void settings_cycle_enable(int dir) {
 
 static void settings_toggle_sound(void) {
     const char* cur = lv_subject_get_string(&soundEnable);
-    if (cur && strcmp(cur, "ON") == 0) lv_subject_copy_string(&soundEnable, "OFF");
-    else                                 lv_subject_copy_string(&soundEnable, "ON");
+    if (cur && strcmp(cur, "ON") == 0) 
+        lv_subject_copy_string(&soundEnable, "OFF");
+    else 
+        lv_subject_copy_string(&soundEnable, "ON");
+}
+
+static void settings_cycle_flip(void) {
+    const char* cur = lv_subject_get_string(&orientation);
+    
+    // OFF -> ON -> AUTO -> OFF
+    if (!cur || strcmp(cur, "OFF") == 0) {
+        lv_subject_copy_string(&orientation, "ON");
+    } else if (strcmp(cur, "ON") == 0) {
+        lv_subject_copy_string(&orientation, "AUTO");
+    } else { // AUTO or unknown
+        lv_subject_copy_string(&orientation, "OFF");
+    }
 }
 
 // Adjust the value for the currently edited row. The XML row order is:
@@ -111,7 +115,21 @@ static void settings_adjust_value(int activeSetting, int dir) {
             if (s < 0) s = 0; else if (s > 60) s = 60;
             lv_subject_set_int(&sleepTimer, s);
         } break;
-        // TODO: implement PREHEAT (1), TIMER (2), FLIP (6) when behavior decided.
+        case 1: { // PREHEAT minutes (step 5) max 30
+            int p = lv_subject_get_int(&preHeat);
+            p += (dir > 0 ? 5 : -5);
+            if (p < 0) p = 0; else if (p > 30) p = 30;
+            lv_subject_set_int(&preHeat, p);
+        } break;
+        case 2: { // TIMER toggle OFF/ON
+            const char* cur = lv_subject_get_string(&timerType);
+            bool now_on = (cur && strcmp(cur, "ON") == 0);
+            if (dir != 0) {
+                now_on = !now_on;
+                lv_subject_copy_string(&timerType, now_on ? "ON" : "OFF");
+            }
+        } break;
+        // TODO: implement FLIP (6) when behavior decided.
         default: break;
     }
 }
@@ -179,21 +197,39 @@ void settings_page_handle_event(event_msg_t msg) {
                 }
             } break;
             case BUTTON_RIGHT_CENTER: { // ENTER/CONFIRM
-                if (!s_settings_edit_mode) {
-                    int cur = lv_subject_get_int(&settingsSelect);
-                    if (cur < 0) cur = s_settings_selected_idx;
-                    if (cur < 0) cur = 0; else if (cur >= SETTINGS_COUNT) cur = SETTINGS_COUNT - 1;
-                    s_settings_selected_idx = cur;
-                    s_settings_blink_on = false;
-                    lv_subject_set_int(&settingsSelect, s_settings_selected_idx);
-                    s_settings_edit_mode = true;
-                    settings_scroll_sync();
-                } else {
-                    s_settings_edit_mode = false;
-                    s_settings_blink_on = false;
-                    lv_subject_set_int(&settingsSelect, s_settings_selected_idx);
-                    settings_scroll_sync();
-                }
+                    if (!s_settings_edit_mode) {
+                        int cur = lv_subject_get_int(&settingsSelect);
+                        if (cur < 0) cur = s_settings_selected_idx;
+                        if (cur < 0) cur = 0; else if (cur >= SETTINGS_COUNT) cur = SETTINGS_COUNT - 1;
+                        // Direct toggle rows: TIMER(2), SOUND(3) (FLIP(6) placeholder)
+                        if (cur == 2) { // TIMER toggle
+                            const char* tcur = lv_subject_get_string(&timerType);
+                            bool on = (tcur && strcmp(tcur, "ON") == 0);
+                            lv_subject_copy_string(&timerType, on ? "OFF" : "ON");
+                        } else if (cur == 3) { // SOUND toggle
+                            settings_toggle_sound();
+                        } else if (cur == 6) { // FLIP cycle
+                            settings_cycle_flip();
+                        } else {
+                            // Enter edit mode for non-boolean rows
+                            s_settings_selected_idx = cur;
+                            s_settings_blink_on = false;
+                            lv_subject_set_int(&settingsSelect, s_settings_selected_idx);
+                            s_settings_edit_mode = true;
+                            settings_scroll_sync();
+                            break;
+                        }
+                        // For direct toggles, just refresh selection highlight (no edit mode)
+                        s_settings_selected_idx = cur;
+                        lv_subject_set_int(&settingsSelect, s_settings_selected_idx);
+                        settings_scroll_sync();
+                    } else {
+                        // Exiting edit mode
+                        s_settings_edit_mode = false;
+                        s_settings_blink_on = false;
+                        lv_subject_set_int(&settingsSelect, s_settings_selected_idx);
+                        settings_scroll_sync();
+                    }
             } break;
             default: break;
         }
@@ -244,6 +280,24 @@ void settings_page_leave(void) {
 
     const char* snd = lv_subject_get_string(&soundEnable);
     wiseman_set_sound_enabled(snd && strcmp(snd, "ON") == 0);
+
+    // Persist PREHEAT and TIMER mode
+    int pre = lv_subject_get_int(&preHeat);
+    if (pre < 0) pre = 0; else if (pre > 30) pre = 30;
+    wiseman_set_preheat_minutes((uint16_t)pre);
+
+    const char* tstr = lv_subject_get_string(&timerType);
+    wiseman_set_timer_mode(tstr && strcmp(tstr, "ON") == 0);
+
+    // Persist orientation (FLIP) mapping OFF->DEFAULT, ON->ROTATED, AUTO->AUTO
+    const char* orient = lv_subject_get_string(&orientation);
+    wiseman_orientation_t o = WISEMAN_ORIENTATION_DEFAULT;
+    if (orient) {
+        if (strcmp(orient, "ON") == 0) o = WISEMAN_ORIENTATION_ROTATED;
+        else if (strcmp(orient, "AUTO") == 0) o = WISEMAN_ORIENTATION_AUTO;
+        else o = WISEMAN_ORIENTATION_DEFAULT; // OFF
+    }
+    wiseman_set_screen_orientation(o);
     wiseman_set_heaters_enabled(ch1, ch2);
 
     wiseman_request_flush();
