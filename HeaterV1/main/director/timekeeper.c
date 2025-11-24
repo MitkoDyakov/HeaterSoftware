@@ -7,6 +7,7 @@
 #include "HeaterGUI_gen.h"
 #include "string.h"
 #include "timekeeper.h"
+#include "wiseman/wiseman.h"
 
 #define TIMEKEEPER_PERIOD_MS 1000
 
@@ -97,7 +98,7 @@ static void timekeeper_cb(TimerHandle_t t) {
     lv_subject_copy_string(&opTime, text);
 }
 
-void timekeeper_init(void)
+void timekeeper_init(void (*callback)(void))
 {
     timekeeper_main_timer = xTimerCreate("timekpr", pdMS_TO_TICKS(TIMEKEEPER_PERIOD_MS), pdTRUE, NULL, timekeeper_cb);
     timekeeper_edit_timer = xTimerCreate("timekpr_edit", pdMS_TO_TICKS(300), pdTRUE, NULL, timekeeper_edit_cb);
@@ -107,71 +108,54 @@ void timekeeper_init(void)
     timer_hh = 0;
     target_timer_mm = 0;
     target_timer_hh = 0;
-    timekeeper_mode = STOPWATCH;
-}
-
-void timekeeper_start_stopwatch(void)
-{
-    timekeeper_mode = STOPWATCH;
-    xTimerStart(timekeeper_main_timer, 0);
-    lv_subject_copy_string(&command, "STOP");
-}
-
-void timekeeper_stop_stopwatch(void)
-{
-    xTimerStop(timekeeper_main_timer, 0);
-    timer_ss = 0;
-    timer_mm = 0;
-    timer_hh = 0;
-    lv_subject_copy_string(&command, "START");
-    lv_subject_copy_string(&opTime, "00:00");
-}
-
-bool timekeeper_start_timer(uint8_t hours, uint8_t minutes, void (*callback)(void))
-{
-    if (hours > 99)
-    {
-        hours = 99;
-    }
-    
-    if (minutes > 59) 
-    {
-        minutes = 59;
-    }
-
-    if(hours==0 && minutes==0)
-    {
-        return false;
-    }
 
     if (callback != NULL)
     {
         callback_function = callback;
-    }else{
-        return false;
     }
-
-    xTimerStop(timekeeper_main_timer, 0);
-    target_timer_mm = minutes;
-    target_timer_hh = hours;
-    timekeeper_mode = TIMER;
-    timer_ss = 0;
-    timer_mm = 0;
-    timer_hh = 0;
-    xTimerStart(timekeeper_main_timer, 0);
-    lv_subject_copy_string(&command, "STOP");
-
-    return true;
+    
+    // Check wiseman settings: if timer_mode is enabled, initialize as timer; otherwise stopwatch
+    const wiseman_settings_t* settings = wiseman_get();
+    if (settings && settings->timer_mode) {
+        timekeeper_mode = TIMER;
+    } else {
+        timekeeper_mode = STOPWATCH;
+    }
 }
 
-void timekeeper_stop_timer(void)
+void timekeeper_start(void)
 {
+    // Check wiseman settings to determine mode
+    const wiseman_settings_t* settings = wiseman_get();
+    timekeeper_mode = (settings && settings->timer_mode) ? TIMER : STOPWATCH;
+    
+    if (timekeeper_mode == TIMER) 
+    {
+        if( target_timer_hh == 0 && target_timer_mm == 0)
+        {
+            return;
+        }   
+    }
+
+    xTimerStart(timekeeper_main_timer, 0);
+    lv_subject_copy_string(&command, "STOP");
+}
+
+void timekeeper_stop(void)
+{
+    xTimerStop(timekeeper_main_timer, 0);
     timer_ss = 0;
     timer_mm = 0;
     timer_hh = 0;
-    xTimerStop(timekeeper_main_timer, 0);
     lv_subject_copy_string(&command, "START");
-    lv_subject_copy_string(&opTime, "00:00");
+    
+    char text[10];
+    if (timekeeper_mode == TIMER) {
+        snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
+    } else {
+        snprintf(text, sizeof(text), "00:00");
+    }
+    lv_subject_copy_string(&opTime, text);
 }
 
 void timekeeper_increment_hour(void)

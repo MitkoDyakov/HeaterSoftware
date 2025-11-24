@@ -572,7 +572,7 @@ bool director_init(QueueHandle_t button_event_queue, QueueHandle_t sample_queue,
 
     // Note: UI updates moved to director_task after LVGL initialization
 
-    timekeeper_init();
+    timekeeper_init(NULL);
 
     BaseType_t ok = xTaskCreate(director_task, "director", 12288, NULL, 6, NULL);
     return (ok == pdPASS);
@@ -585,7 +585,7 @@ void page_main(event_msg_t msg){
                 opStat = !opStat;
                 if (opStat) {                    
                     // lv_timer_resume(ui_clock_timer);
-                    timekeeper_start_stopwatch();
+                    timekeeper_start();
                     // START pressed: configure heaters
                     int target = lv_subject_get_int(&targetTemp);
                     if (target < 0) target = 0; else if (target > 60) target = 60;
@@ -619,7 +619,7 @@ void page_main(event_msg_t msg){
                     }
                     ESP_LOGI("director.heaters", "Heaters START target=%dC ch1=%d ch2=%d", target, en1, en2);
                 } else {                    
-                    timekeeper_stop_stopwatch();  
+                    timekeeper_stop();  
                     // STOP pressed: disable both heaters (setpoints retained for next start)
                     fireman_set_heater1_enabled(false);
                     fireman_set_heater2_enabled(false);
