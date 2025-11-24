@@ -73,13 +73,21 @@ static void timekeeper_cb(TimerHandle_t t) {
         }
 
         if (timer_hh == 99 && timer_mm == 59) {
-            xTimerStop(timekeeper_main_timer, 0);
+            timekeeper_stop();
         }
     }
 
     if (timekeeper_mode == TIMER) {
-        uint8_t remaining_hh = target_timer_hh - timer_hh;
-        uint8_t remaining_mm = target_timer_mm - timer_mm;
+        // Countdown: decrement elapsed time, minute decreases after 60 seconds
+        uint8_t remaining_hh = target_timer_hh;
+        uint8_t remaining_mm = target_timer_mm;
+        
+        // Decrement minutes based on elapsed time
+        if (timer_mm > 0) {
+            remaining_mm -= timer_mm;
+        } else if (timer_hh > 0) {
+            remaining_hh -= timer_hh;
+        }
 
         if (timer_ss & 1) {
             snprintf(text, sizeof(text), "%02u %02u", remaining_hh, remaining_mm);
@@ -87,8 +95,8 @@ static void timekeeper_cb(TimerHandle_t t) {
             snprintf(text, sizeof(text), "%02u:%02u", remaining_hh, remaining_mm);
         }
 
-        if (remaining_hh == 0 && remaining_mm == 0) {
-            xTimerStop(timekeeper_main_timer, 0);
+        if (remaining_hh == 0 && remaining_mm == 0 && timer_ss == 0) {
+           timekeeper_stop();
             if (callback_function != NULL) {
                 callback_function();    
             }

@@ -79,6 +79,10 @@ static lv_obj_t * s_page_container = NULL; // container for dynamic pages
 static bool s_display_sleeping = false;       // true when dimmed due to inactivity
 static TickType_t s_last_input_tick = 0;      // last button activity (for inactivity timer)
 
+// Timer edit mode state
+static bool s_timer_edit_mode = false;        // true when editing timer duration
+#define TIMER_EDIT_HOLD_MS 3000                // 3 second hold to enter edit mode
+
 // We only keep the 1ms LVGL tick esp_timer. The "clock" uses an LVGL timer now.
 static esp_timer_handle_t lv_tick_timer = NULL;
 
@@ -579,10 +583,31 @@ bool director_init(QueueHandle_t button_event_queue, QueueHandle_t sample_queue,
 }
 
 void page_main(event_msg_t msg){
+    // Check if timer mode is enabled in wiseman
+    const wiseman_settings_t* settings = wiseman_get();
+    bool timer_mode_enabled = (settings && settings->timer_mode);
+    
     if (msg.event == BUTTON_EVENT_SHORT) {
-        switch (msg.btn_id) {
-            case BUTTON_RIGHT_BOTTOM: { // "RIGHT_BOTTOM" (START/STOP)
-                opStat = !opStat;
+        // Clear any pending long-press detection on short press
+        if (msg.btn_id == BUTTON_RIGHT_BOTTOM && s_timer_edit_mode) {
+            // In edit mode: exit on bottom-right short press
+            timekeeper_timer_stop_edit();
+            s_timer_edit_mode = false;
+        } else if (s_timer_edit_mode) {
+            // In edit mode: handle increment/decrement buttons
+            if (msg.btn_id == BUTTON_LEFT_TOP) {
+                timekeeper_increment_hour();
+            } else if (msg.btn_id == BUTTON_LEFT_CENTER) {
+                timekeeper_decrement_hour();
+            } else if (msg.btn_id == BUTTON_RIGHT_TOP) {
+                timekeeper_increment_minute();
+            } else if (msg.btn_id == BUTTON_RIGHT_CENTER) {
+                timekeeper_decrement_minute();
+            }
+            return; // Don't process other button logic while in edit mode
+        } else if (msg.btn_id == BUTTON_RIGHT_BOTTOM) {
+            // Not in timer edit mode: normal start/stop logic
+            opStat = !opStat;
                 if (opStat) {                    
                     // lv_timer_resume(ui_clock_timer);
                     timekeeper_start();
@@ -629,31 +654,28 @@ void page_main(event_msg_t msg){
                     if (ok) lv_subject_set_int(&activePDO, 5);
                     ESP_LOGI("director.heaters", "Heaters STOP (disabled all)");
                 }
-            } break;
-
-            case BUTTON_RIGHT_TOP: { // "RIGHT_TOP"
-                int t = lv_subject_get_int(&targetTemp) + 1;
-                if (t < 61) {
-                    lv_subject_set_int(&targetTemp, t);
-                    // Live update while running
-                    if (opStat) {
-                        int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
-                        fireman_set_setpoints(clamped, clamped);
-                    }
+        } else if (msg.btn_id == BUTTON_RIGHT_TOP) {
+            // INCREMENT temperature (short press)
+            int t = lv_subject_get_int(&targetTemp) + 1;
+            if (t < 61) {
+                lv_subject_set_int(&targetTemp, t);
+                // Live update while running
+                if (opStat) {
+                    int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                    fireman_set_setpoints(clamped, clamped);
                 }
-            } break;
-
-            case BUTTON_RIGHT_CENTER: { // "RIGHT_CENTER"
-                int t = lv_subject_get_int(&targetTemp) - 1;
-                if (t > -1) {
-                    lv_subject_set_int(&targetTemp, t);
-                    // Live update while running
-                    if (opStat) {
-                        int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
-                        fireman_set_setpoints(clamped, clamped);
-                    }
+            }
+        } else if (msg.btn_id == BUTTON_RIGHT_CENTER) {
+            // DECREMENT temperature (short press)
+            int t = lv_subject_get_int(&targetTemp) - 1;
+            if (t > -1) {
+                lv_subject_set_int(&targetTemp, t);
+                // Live update while running
+                if (opStat) {
+                    int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                    fireman_set_setpoints(clamped, clamped);
                 }
-            } break;
+            }
         }
     } else if (msg.event == BUTTON_EVENT_REPEAT) {
         switch (msg.btn_id) {
@@ -669,14 +691,29 @@ void page_main(event_msg_t msg){
             } break;
 
             case BUTTON_RIGHT_CENTER: { // "RIGHT_CENTER" (decrement hold)
-                int t = lv_subject_get_int(&targetTemp) - 1;
-                if (t > -1) {
-                    lv_subject_set_int(&targetTemp, t);
-                    if (opStat) {
-                        int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
-                        fireman_set_setpoints(clamped, clamped);
+                if (!s_timer_edit_mode) {
+                    int t = lv_subject_get_int(&targetTemp) - 1;
+                    if (t > -1) {
+                        lv_subject_set_int(&targetTemp, t);
+                        if (opStat) {
+                            int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                            fireman_set_setpoints(clamped, clamped);
+                        }
                     }
                 }
+            } break;
+            
+            case BUTTON_RIGHT_BOTTOM: { // "RIGHT_BOTTOM" (long hold to enter timer edit)
+                static uint8_t count = 0;
+                if(count == 3){ // after 5 repeats (~3s)
+                    if (timer_mode_enabled && !s_timer_edit_mode) {
+                        timekeeper_timer_start_edit();
+                        s_timer_edit_mode = true;
+                        ESP_LOGI("director.timer", "Entered timer edit mode");
+                    }
+                    count = 0; // reset count
+                }
+                count++;
             } break;
         }
     }
