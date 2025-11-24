@@ -542,6 +542,17 @@ static void director_task(void *arg)
         // Check tilt pin and update display orientation if needed
         orientation_check_and_update();
         
+        // Check if timer finished (safe context, no ISR)
+        if (timekeeper_did_timer_finish()) {
+            opStat = false;
+            fireman_set_heater1_enabled(false);
+            fireman_set_heater2_enabled(false);
+            // Revert PD voltage to 5V
+            bool ok = request_pd_voltage(5);
+            ESP_LOGI("director.timer", "Timer elapsed - heaters disabled, PD reverted to 5V (result=%d)", (int)ok);
+            if (ok) lv_subject_set_int(&activePDO, 5);
+        }
+        
         // Update runtime display approximately once per loop (10ms delay below) but only when minute count changes.
         static uint32_t s_last_runtime_min = 0xFFFFFFFFu; // force first update
         uint32_t cur_min = wiseman_get_op_time_minutes();
@@ -558,6 +569,18 @@ static void director_task(void *arg)
     }
 
     vTaskDelete(NULL);
+}
+
+// Callback invoked by timekeeper when the timer elapses
+static void timer_elapsed_callback(void) {
+    // Timer has finished: stop the heaters and update UI state
+    opStat = false;
+    fireman_set_heater1_enabled(false);
+    fireman_set_heater2_enabled(false);
+    // Revert PD voltage to 5V
+    bool ok = request_pd_voltage(5);
+    ESP_LOGI("director.timer", "Timer elapsed - heaters disabled, PD reverted to 5V (result=%d)", (int)ok);
+    if (ok) lv_subject_set_int(&activePDO, 5);
 }
 
 bool director_init(QueueHandle_t button_event_queue, QueueHandle_t sample_queue, QueueHandle_t i2c_queue, const ap33772s_caps_t *initial_pd_caps) {
@@ -680,12 +703,14 @@ void page_main(event_msg_t msg){
     } else if (msg.event == BUTTON_EVENT_REPEAT) {
         switch (msg.btn_id) {
             case BUTTON_RIGHT_TOP: { // "RIGHT_TOP" (increment hold)
-                int t = lv_subject_get_int(&targetTemp) + 1;
-                if (t < 61) {
-                    lv_subject_set_int(&targetTemp, t);
-                    if (opStat) {
-                        int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
-                        fireman_set_setpoints(clamped, clamped);
+                if (!s_timer_edit_mode) {
+                    int t = lv_subject_get_int(&targetTemp) + 1;
+                    if (t < 61) {
+                        lv_subject_set_int(&targetTemp, t);
+                        if (opStat) {
+                            int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                            fireman_set_setpoints(clamped, clamped);
+                        }
                     }
                 }
             } break;

@@ -32,6 +32,7 @@ void (*callback_function)(void) = NULL;
 
 bool visible_flag = false;
 uint8_t blinkCounter = 0;
+static bool timer_finished = false;  // Flag to signal timer completion to main loop
 
 static void timekeeper_edit_cb(TimerHandle_t t) {
     if (visible_flag && blinkCounter == 4) {
@@ -96,10 +97,9 @@ static void timekeeper_cb(TimerHandle_t t) {
         }
 
         if (remaining_hh == 0 && remaining_mm == 0 && timer_ss == 0) {
-           timekeeper_stop();
-            if (callback_function != NULL) {
-                callback_function();    
-            }
+            timekeeper_stop();
+            timer_finished = true;  // Signal completion to main loop
+            return;
         }
     }
         
@@ -145,6 +145,7 @@ void timekeeper_start(void)
         }   
     }
 
+    timer_finished = false;  // Reset completion flag when starting
     xTimerStart(timekeeper_main_timer, 0);
     lv_subject_copy_string(&command, "STOP");
 }
@@ -227,4 +228,9 @@ void timekeeper_timer_stop_edit(void)
 {
     lv_subject_set_int(&opTimeVisible, 1);
     xTimerStop(timekeeper_edit_timer, 0);   
+}
+
+bool timekeeper_did_timer_finish(void)
+{
+    return timer_finished;
 }   
