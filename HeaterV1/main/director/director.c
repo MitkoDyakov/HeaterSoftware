@@ -162,6 +162,8 @@ static void load_page(uint8_t page_id) {
 
             lv_obj_t * control_0 = control_create(row_5, &command, &opTime);
             lv_obj_set_style_pad_all(control_0, 0, 0);
+
+            timekeeper_refresh();
             
             // lv_subject_copy_string(&ch1_active, "ON");
             // lv_subject_copy_string(&ch2_active, "ON");
@@ -543,7 +545,7 @@ static void director_task(void *arg)
         orientation_check_and_update();
         
         // Check if timer finished (safe context, no ISR)
-        if (timekeeper_did_timer_finish()) {
+        if (timekeeper_is_done()) {
             opStat = false;
             fireman_set_heater1_enabled(false);
             fireman_set_heater2_enabled(false);
@@ -571,18 +573,6 @@ static void director_task(void *arg)
     vTaskDelete(NULL);
 }
 
-// Callback invoked by timekeeper when the timer elapses
-static void timer_elapsed_callback(void) {
-    // Timer has finished: stop the heaters and update UI state
-    opStat = false;
-    fireman_set_heater1_enabled(false);
-    fireman_set_heater2_enabled(false);
-    // Revert PD voltage to 5V
-    bool ok = request_pd_voltage(5);
-    ESP_LOGI("director.timer", "Timer elapsed - heaters disabled, PD reverted to 5V (result=%d)", (int)ok);
-    if (ok) lv_subject_set_int(&activePDO, 5);
-}
-
 bool director_init(QueueHandle_t button_event_queue, QueueHandle_t sample_queue, QueueHandle_t i2c_queue, const ap33772s_caps_t *initial_pd_caps) {
 
     // Set global variables directly
@@ -597,9 +587,8 @@ bool director_init(QueueHandle_t button_event_queue, QueueHandle_t sample_queue,
         ESP_LOGW("director.pd", "No PD caps provided - all voltages unavailable");
     }
 
+    timekeeper_init();
     // Note: UI updates moved to director_task after LVGL initialization
-
-    timekeeper_init(NULL);
 
     BaseType_t ok = xTaskCreate(director_task, "director", 12288, NULL, 6, NULL);
     return (ok == pdPASS);

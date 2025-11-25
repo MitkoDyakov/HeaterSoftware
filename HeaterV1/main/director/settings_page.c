@@ -3,8 +3,10 @@
 #include "wiseman/wiseman.h"
 #include "wiseman/wiseman_persist.h"
 #include "director/backlight.h"
+#include "timekeeper.h"
 #include <string.h>
 #include "pinout.h"
+#include "esp_log.h"
 // Window/scroll constants
 #define WINDOW_COUNT 5
 #define ROW_HEIGHT_PX 23
@@ -75,6 +77,14 @@ static void settings_toggle_sound(void) {
         lv_subject_copy_string(&soundEnable, "ON");
 }
 
+static void settings_toggle_timer(void) {
+    const char* cur = lv_subject_get_string(&timerType);
+    if (cur && strcmp(cur, "ON") == 0)
+        lv_subject_copy_string(&timerType, "OFF");
+    else
+        lv_subject_copy_string(&timerType, "ON");
+}
+
 static void settings_cycle_flip(void) {
     const char* cur = lv_subject_get_string(&orientation);
     
@@ -122,11 +132,8 @@ static void settings_adjust_value(int activeSetting, int dir) {
             lv_subject_set_int(&preHeat, p);
         } break;
         case 2: { // TIMER toggle OFF/ON
-            const char* cur = lv_subject_get_string(&timerType);
-            bool now_on = (cur && strcmp(cur, "ON") == 0);
             if (dir != 0) {
-                now_on = !now_on;
-                lv_subject_copy_string(&timerType, now_on ? "ON" : "OFF");
+                settings_toggle_timer();
             }
         } break;
         // TODO: implement FLIP (6) when behavior decided.
@@ -201,11 +208,14 @@ void settings_page_handle_event(event_msg_t msg) {
                         int cur = lv_subject_get_int(&settingsSelect);
                         if (cur < 0) cur = s_settings_selected_idx;
                         if (cur < 0) cur = 0; else if (cur >= SETTINGS_COUNT) cur = SETTINGS_COUNT - 1;
-                        // Direct toggle rows: TIMER(2), SOUND(3) (FLIP(6) placeholder)
+                        // Direct toggle rows: TIMER(2), SOUND(3), FLIP(6)
                         if (cur == 2) { // TIMER toggle
-                            const char* tcur = lv_subject_get_string(&timerType);
-                            bool on = (tcur && strcmp(tcur, "ON") == 0);
-                            lv_subject_copy_string(&timerType, on ? "OFF" : "ON");
+                            // Prevent toggling timer mode while timer is running
+                            if (!timekeeper_is_done()) {
+                                ESP_LOGW("settings", "Cannot toggle timer mode while timer is active");
+                                break;
+                            }
+                            settings_toggle_timer();
                         } else if (cur == 3) { // SOUND toggle
                             settings_toggle_sound();
                         } else if (cur == 6) { // FLIP cycle

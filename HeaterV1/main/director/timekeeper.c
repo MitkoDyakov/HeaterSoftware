@@ -13,7 +13,8 @@
 
 enum {
     STOPWATCH = 0,
-    TIMER = 1
+    TIMER = 1,
+    MESSAGE = 2
 };
 
 // UI Clock via LVGL timer
@@ -32,8 +33,36 @@ void (*callback_function)(void) = NULL;
 
 bool visible_flag = false;
 uint8_t blinkCounter = 0;
-static bool timer_finished = false;  // Flag to signal timer completion to main loop
+static bool timekeeper_finished = true;  // Flag to signal timer completion to main loop
 
+void timekeeper_refresh()
+{
+    if (xTimerIsTimerActive(timekeeper_main_timer) == pdFALSE)
+    {
+        const wiseman_settings_t* settings = wiseman_get();
+        if (settings && settings->timer_mode) {
+            timekeeper_mode = TIMER;
+        } else {
+            timekeeper_mode = STOPWATCH;
+        }
+
+        switch (timekeeper_mode)
+        {
+            case STOPWATCH:
+                lv_subject_copy_string(&command, "START");
+                lv_subject_copy_string(&opTime, "00:00");
+                break;
+            case TIMER:
+                lv_subject_copy_string(&command, "START");
+                char text[10];
+                snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
+                lv_subject_copy_string(&opTime, text);
+                break;
+            default:
+                break;
+        }
+    }
+}
 
 static void timekeeper_edit_cb(TimerHandle_t t) {
     if (visible_flag && blinkCounter == 4) {
@@ -99,7 +128,6 @@ static void timekeeper_cb(TimerHandle_t t) {
 
         if (remaining_hh == 0 && remaining_mm == 0 && timer_ss == 0) {
             timekeeper_stop();
-            timer_finished = true;  // Signal completion to main loop
             return;
         }
     }
@@ -117,6 +145,8 @@ void timekeeper_init()
     timer_hh = 0;
     target_timer_mm = 0;
     target_timer_hh = 0;
+
+    timekeeper_finished = true;
 
     // Check wiseman settings: if timer_mode is enabled, initialize as timer; otherwise stopwatch
     const wiseman_settings_t* settings = wiseman_get();
@@ -141,7 +171,7 @@ void timekeeper_start(void)
         }   
     }
 
-    timer_finished = false;  // Reset completion flag when starting
+    timekeeper_finished = false;  // Reset completion flag when starting
     xTimerStart(timekeeper_main_timer, 0);
     lv_subject_copy_string(&command, "STOP");
 }
@@ -161,6 +191,8 @@ void timekeeper_stop(void)
         snprintf(text, sizeof(text), "00:00");
     }
     lv_subject_copy_string(&opTime, text);
+
+    timekeeper_finished = true;  // Reset completion flag
 }
 
 void timekeeper_increment_hour(void)
@@ -226,7 +258,7 @@ void timekeeper_timer_stop_edit(void)
     xTimerStop(timekeeper_edit_timer, 0);   
 }
 
-bool timekeeper_did_timer_finish(void)
+bool timekeeper_is_done(void)
 {
-    return timer_finished;
+    return timekeeper_finished;
 }   
