@@ -17,7 +17,7 @@
         <style name="main" />
         <lv_image src="start_bg"></lv_image>
         <lv_label style_text_align="center" bind_text="$command" x="70"  width="65" height="40"></lv_label>
-        <lv_label style_text_align="center" bind_text="$time" x="1" y="0" width="70" height="40">
+        <lv_label style_text_align="left" bind_text="$time" x="7" y="0" width="134" height="40">
             <style name="invisible" selector="checked"/>
             <bind_state_if_eq state="checked" subject="opTimeVisible" ref_value="0"/>
         </lv_label>

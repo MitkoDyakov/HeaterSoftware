@@ -34,6 +34,7 @@ bool visible_flag = false;
 uint8_t blinkCounter = 0;
 static bool timer_finished = false;  // Flag to signal timer completion to main loop
 
+
 static void timekeeper_edit_cb(TimerHandle_t t) {
     if (visible_flag && blinkCounter == 4) {
         blinkCounter = 0;
@@ -106,7 +107,7 @@ static void timekeeper_cb(TimerHandle_t t) {
     lv_subject_copy_string(&opTime, text);
 }
 
-void timekeeper_init(void (*callback)(void))
+void timekeeper_init()
 {
     timekeeper_main_timer = xTimerCreate("timekpr", pdMS_TO_TICKS(TIMEKEEPER_PERIOD_MS), pdTRUE, NULL, timekeeper_cb);
     timekeeper_edit_timer = xTimerCreate("timekpr_edit", pdMS_TO_TICKS(300), pdTRUE, NULL, timekeeper_edit_cb);
@@ -117,11 +118,6 @@ void timekeeper_init(void (*callback)(void))
     target_timer_mm = 0;
     target_timer_hh = 0;
 
-    if (callback != NULL)
-    {
-        callback_function = callback;
-    }
-    
     // Check wiseman settings: if timer_mode is enabled, initialize as timer; otherwise stopwatch
     const wiseman_settings_t* settings = wiseman_get();
     if (settings && settings->timer_mode) {
