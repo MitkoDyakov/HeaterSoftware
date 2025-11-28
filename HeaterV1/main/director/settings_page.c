@@ -122,6 +122,12 @@ static void settings_adjust_value(int activeSetting, int dir) {
             lv_subject_set_int(&preHeat, p);
         } break;
         case 2: { // TIMER toggle OFF/ON
+            // Prevent toggling timer mode while heater is running
+            extern uint8_t opStat; // 0=stopped, 1=running
+            if (opStat != 0) {
+                // Heater is running - ignore toggle request
+                break;
+            }
             const char* cur = lv_subject_get_string(&timerType);
             bool now_on = (cur && strcmp(cur, "ON") == 0);
             if (dir != 0) {
@@ -203,9 +209,13 @@ void settings_page_handle_event(event_msg_t msg) {
                         if (cur < 0) cur = 0; else if (cur >= SETTINGS_COUNT) cur = SETTINGS_COUNT - 1;
                         // Direct toggle rows: TIMER(2), SOUND(3) (FLIP(6) placeholder)
                         if (cur == 2) { // TIMER toggle
-                            const char* tcur = lv_subject_get_string(&timerType);
-                            bool on = (tcur && strcmp(tcur, "ON") == 0);
-                            lv_subject_copy_string(&timerType, on ? "OFF" : "ON");
+                            // Prevent toggling timer mode while heater is running
+                            extern uint8_t opStat;
+                            if (opStat == 0) { // Only allow toggle when stopped
+                                const char* tcur = lv_subject_get_string(&timerType);
+                                bool on = (tcur && strcmp(tcur, "ON") == 0);
+                                lv_subject_copy_string(&timerType, on ? "OFF" : "ON");
+                            }
                         } else if (cur == 3) { // SOUND toggle
                             settings_toggle_sound();
                         } else if (cur == 6) { // FLIP cycle
