@@ -149,7 +149,7 @@ void settings_page_blink_cb(lv_timer_t *t) {
     }
 }
 
-void settings_page_enter(lv_obj_t *page_container) {
+void page_settings_create(lv_obj_t *page_container) {
     s_page_container = page_container;
     (void)settings_create(s_page_container);
     s_settings_edit_mode = false;
@@ -249,7 +249,7 @@ void settings_page_handle_event(event_msg_t msg) {
     }
 }
 
-void settings_page_leave(void) {
+void page_settings_cleanup(void) {
     // Persist settings on leaving Settings page
     s_settings_edit_mode = false;
     s_settings_blink_on = false;

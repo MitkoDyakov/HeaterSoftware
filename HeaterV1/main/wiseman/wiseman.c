@@ -6,6 +6,8 @@
 #include "freertos/task.h"
 #include "freertos/timers.h"
 #include "wiseman_persist.h"
+#include "HeaterGUI_gen.h"
+#include "director/backlight.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -301,4 +303,55 @@ void wiseman_add_op_time_minutes(uint32_t minutes) {
     xSemaphoreGive(s_mutex);
     // Mark dirty so that updated operating time is saved. This is called at most once per minute.
     wiseman_mark_dirty();
+}
+
+void wiseman_sync_to_ui(void) {
+    const wiseman_settings_t *ws = wiseman_get();
+    if (!ws) return;
+
+    // Sync brightness (with minimum enforcement)
+    uint8_t b = ws->display_brightness < 5 ? 5 : ws->display_brightness;
+    backlight_set_brightness(b);
+    lv_subject_set_int(&brightness, (int)b);
+
+    // Sync temperature setpoints
+    lv_subject_set_int(&targetTemp, ws->setpoint1_c);
+    lv_subject_set_int(&default_temp, ws->setpoint1_c);
+
+    // Sync sleep timer
+    lv_subject_set_int(&sleepTimer, ws->sleep_timeout_s);
+
+    // Sync preheat and timer mode
+    lv_subject_set_int(&preHeat, ws->preheat_min);
+    lv_subject_copy_string(&timerType, ws->timer_mode ? "ON" : "OFF");
+
+    // Sync orientation
+    switch(ws->screen_orientation) {
+        case WISEMAN_ORIENTATION_ROTATED: 
+            lv_subject_copy_string(&orientation, "ON"); 
+            break;
+        case WISEMAN_ORIENTATION_AUTO:    
+            lv_subject_copy_string(&orientation, "AUTO"); 
+            break;
+        default:                          
+            lv_subject_copy_string(&orientation, "OFF"); 
+            break;
+    }
+
+    // Sync sound enable
+    lv_subject_copy_string(&soundEnable, ws->sound_enabled ? "ON" : "OFF");
+
+    // Sync active channels
+    if (ws->heater1_enabled && ws->heater2_enabled) {
+        lv_subject_copy_string(&activeCh, "CH1/2");
+    } else if (ws->heater1_enabled) {
+        lv_subject_copy_string(&activeCh, "CH1");
+    } else if (ws->heater2_enabled) {
+        lv_subject_copy_string(&activeCh, "CH2");
+    } else {
+        // If none enabled, default to CH1/2 in UI
+        lv_subject_copy_string(&activeCh, "CH1/2");
+    }
+
+    ESP_LOGI(TAG, "UI subjects synchronized from persistent settings");
 }

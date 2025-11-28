@@ -6,42 +6,39 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
+#include <math.h>
+
 #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
+#include "esp_timer.h"
+#include "esp_log.h"
 
-#include "driver/gpio.h"
-#include "lvgl.h"
+#include "driver/spi_master.h"
 #include "esp_lcd_panel_io.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_vendor.h"
-#include "driver/spi_master.h"
-#include "esp_heap_caps.h"
-#include "esp_timer.h"
 
-#include "esp_log.h"
-#include <string.h>
+#include "lvgl.h"
 
 #include "ui.h"
-#include "demo_gen.h"
 #include "home_gen.h"
 #include "HeaterGUI_gen.h"
+
 #include "director.h"
 #include "switchboard/switchboard.h"
 #include "fireman/fireman.h"
-#include "mailman/mailman.h"  // still needed for button events type definitions
-#include "AP33772S.h"         // for ap33772s_caps_t if not already included
+#include "mailman/mailman.h"
+#include "AP33772S.h"
 #include "wiseman/wiseman.h"
-#include "wiseman/wiseman_persist.h"
 #include "director/backlight.h"
 #include "director/orientation.h"
-#include "driver/ledc.h"
-#include "pwm_alloc.h"
-#include <math.h>
 #include "pinout.h"
 #include "timekeeper.h"
 #include "settings_page.h"
+#include "power_page.h"
 
 // ===================== DEFINITIONS AND MACROS =====================
 
@@ -86,11 +83,6 @@ static bool s_timer_edit_mode = false;        // true when editing timer duratio
 // We only keep the 1ms LVGL tick esp_timer. The "clock" uses an LVGL timer now.
 static esp_timer_handle_t lv_tick_timer = NULL;
 
-// op time counters
-// static uint8_t timer_ss = 0;
-// static uint8_t timer_mm = 0;
-// static uint8_t timer_hh = 0;
-
 static QueueHandle_t g_button_queue = NULL; /* Provided by main (switchboard) */
 static QueueHandle_t g_jumbo_queue  = NULL; /* Fireman sample queue */
 static QueueHandle_t g_i2c_queue    = NULL; /* Mailman I2C queue */
@@ -111,8 +103,7 @@ static lv_timer_t *sleep_check_timer = NULL;    // checks inactivity for display
 // ===================== FORWARD DECLARATIONS =====================
 
 void page_main(event_msg_t msg);
-void page_power(event_msg_t msg);
-void page_info(event_msg_t msg); // settings page handled by settings_page.*
+void page_info(event_msg_t msg);
 
 static void load_page(uint8_t page_id);
 static void unload_page(uint8_t page_id);
@@ -142,35 +133,38 @@ lv_obj_t * find_obj_by_name(lv_obj_t * root, const char * name) {
     return NULL;
 }
 
+static lv_obj_t * page_main_create(lv_obj_t * parent) {
+    lv_obj_t * row_4 = row_create(parent);
+    lv_obj_set_width(row_4, 141);
+    lv_obj_set_height(row_4, 83);
+
+    lv_obj_t * target_tmp_0 = target_tmp_create(row_4, &targetTemp);
+    lv_obj_set_style_pad_all(target_tmp_0, 0, 0);
+
+    lv_obj_t * row_5 = row_create(parent);
+    lv_obj_set_width(row_5, 141);
+    lv_obj_set_height(row_5, 39);
+    lv_obj_set_style_margin_top(row_5, 4, 0);
+
+    lv_obj_t * control_0 = control_create(row_5, &command, &opTime);
+    lv_obj_set_style_pad_all(control_0, 0, 0);
+    
+    return row_4; // Return first row as representative object
+}
+
 static void load_page(uint8_t page_id) {
     if (!s_page_container) return; // not ready yet
     lv_obj_clean(s_page_container);
     lv_subject_set_int(&pageSelect, (int)page_id);
     switch(page_id) {
         case PAGE_MAIN: {
-            lv_obj_t * row_4 = row_create(s_page_container);
-            lv_obj_set_width(row_4, 141);
-            lv_obj_set_height(row_4, 83);
-
-            lv_obj_t * target_tmp_0 = target_tmp_create(row_4, &targetTemp);
-            lv_obj_set_style_pad_all(target_tmp_0, 0, 0);
-
-            lv_obj_t * row_5 = row_create(s_page_container);
-            lv_obj_set_width(row_5, 141);
-            lv_obj_set_height(row_5, 39);
-            lv_obj_set_style_margin_top(row_5, 4, 0);
-
-            lv_obj_t * control_0 = control_create(row_5, &command, &opTime);
-            lv_obj_set_style_pad_all(control_0, 0, 0);
-            
-            // lv_subject_copy_string(&ch1_active, "ON");
-            // lv_subject_copy_string(&ch2_active, "ON");
+            (void)page_main_create(s_page_container);
         } break;
         case PAGE_SETTINGS: {
-            settings_page_enter(s_page_container);
+            page_settings_create(s_page_container);
         } break;
         case PAGE_POWER: {
-            (void)power_create(s_page_container);
+            page_power_create(s_page_container, &g_initial_pd_caps);
         } break;
         case PAGE_INFO: {
             (void)info_create(s_page_container);
@@ -185,10 +179,10 @@ static void unload_page(uint8_t page_id) {
             //clean up page 1 resources if any
         } break;
         case PAGE_POWER: {
-            //clean up page 2 resources if any
+            page_power_cleanup();
         } break;
         case PAGE_SETTINGS: {
-            settings_page_leave();
+            page_settings_cleanup();
         } break;
         case PAGE_INFO: {
             //clean up page 4 resources if any
@@ -267,7 +261,8 @@ void lvgl_init_display(void)
     ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle, true));
     ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
     ESP_ERROR_CHECK(esp_lcd_panel_swap_xy(panel_handle, true));
-    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
+    // Display will be turned on after initial screen is rendered
+    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, false));
 
     // Initialize backlight PWM using saved brightness setting
     uint8_t initial_brightness = 100; // fallback
@@ -295,8 +290,6 @@ void lvgl_init_display(void)
     // Initialize orientation detection and set initial display orientation  
     orientation_init(s_lvgl_display, panel_handle);
 }
-
-// Blink handled by settings_page_blink_cb in settings_page.c
 
 // Apply the user's configured brightness to the hardware backlight
 static void display_apply_user_brightness(void) {
@@ -368,7 +361,12 @@ static void director_task(void *arg)
 
     lv_obj_t * home_screen = home_create();
     lv_scr_load(home_screen);
-    // by this point we should have display showing home screen
+    
+    // Force LVGL to render the initial screen before enabling display
+    lv_timer_handler();
+    
+    // Now turn on the display with clean content
+    ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
     // Locate and cache the autogenerated container by its LVGL name
     s_page_container = find_obj_by_name(home_screen, "page_container");
@@ -383,88 +381,14 @@ static void director_task(void *arg)
     s_last_input_tick = xTaskGetTickCount();
     sleep_check_timer = lv_timer_create(sleep_check_cb, 250, NULL);
 
-    // (Input scanning handled by switchboard module; we just consume events.)
-    const wiseman_settings_t *ws_cur = wiseman_get();
-    if (ws_cur) {
-        uint8_t b = ws_cur->display_brightness < 5 ? 5 : ws_cur->display_brightness;
-        backlight_set_brightness(b);
-        lv_subject_set_int(&targetTemp, ws_cur->setpoint1_c);
-        lv_subject_set_int(&default_temp, ws_cur->setpoint1_c);
-        lv_subject_set_int(&brightness, (int)(ws_cur->display_brightness < 5 ? 5 : ws_cur->display_brightness));
-        lv_subject_set_int(&sleepTimer, ws_cur->sleep_timeout_s);
-        // Reflect PREHEAT and TIMER mode on UI
-        lv_subject_set_int(&preHeat, ws_cur->preheat_min);
-        lv_subject_copy_string(&timerType, ws_cur->timer_mode ? "ON" : "OFF");
-        // Reflect orientation
-        switch(ws_cur->screen_orientation) {
-            case WISEMAN_ORIENTATION_ROTATED: lv_subject_copy_string(&orientation, "ON"); break;
-            case WISEMAN_ORIENTATION_AUTO:    lv_subject_copy_string(&orientation, "AUTO"); break;
-            default:                          lv_subject_copy_string(&orientation, "OFF"); break;
-        }
-        lv_subject_copy_string(&soundEnable, ws_cur->sound_enabled ? "ON" : "OFF");
-        if (ws_cur->heater1_enabled && ws_cur->heater2_enabled) {
-            lv_subject_copy_string(&activeCh, "CH1/2");
-        } else if (ws_cur->heater1_enabled) {
-            lv_subject_copy_string(&activeCh, "CH1");
-        } else if (ws_cur->heater2_enabled) {
-            lv_subject_copy_string(&activeCh, "CH2");
-        } else {
-            // If none enabled, default to CH1/2 in UI
-            lv_subject_copy_string(&activeCh, "CH1/2");
-        }
-    }
+    // Sync wiseman persistent settings to LVGL UI subjects
+    wiseman_sync_to_ui();
+    
     // State used in button handler
     uint8_t current_page = PAGE_MAIN;
     
     // start with home page
     load_page(PAGE_MAIN);
-
-    // Update PD capabilities in UI (now that LVGL is initialized)
-    lv_subject_set_int(&fiveV_available,    g_initial_pd_caps.fiveV);
-    lv_subject_set_int(&nineV_available,    g_initial_pd_caps.nineV);
-    lv_subject_set_int(&fifteenV_available, g_initial_pd_caps.fifteenV);
-    lv_subject_set_int(&twentyV_available,  g_initial_pd_caps.twentyV);
-    
-    // Set active PDO based on PD availability
-    if (g_initial_pd_caps.fiveV) {
-        // PD charger available - default to 5V
-        lv_subject_set_int(&activePDO, 5);
-    } else {
-        // Not a PD charger - set to 0 (no PD)
-        lv_subject_set_int(&activePDO, 0);
-    }
-    
-    // Update current ratings
-    char buf[10];
-    if (g_initial_pd_caps.fiveV) {
-        snprintf(buf, sizeof(buf), "%.2fA", g_initial_pd_caps.cur5);
-        lv_subject_copy_string(&fiveV, buf);
-    } else {
-        lv_subject_copy_string(&fiveV, "--");
-    }
-    
-    if (g_initial_pd_caps.nineV) {
-        snprintf(buf, sizeof(buf), "%.2fA", g_initial_pd_caps.cur9);
-        lv_subject_copy_string(&nineV, buf);
-    } else {
-        lv_subject_copy_string(&nineV, "--");
-    }
-    
-    if (g_initial_pd_caps.fifteenV) {
-        snprintf(buf, sizeof(buf), "%.2fA", g_initial_pd_caps.cur15);
-        lv_subject_copy_string(&fifteenV, buf);
-    } else {
-        lv_subject_copy_string(&fifteenV, "--");
-    }
-    
-    if (g_initial_pd_caps.twentyV) {
-        snprintf(buf, sizeof(buf), "%.2fA", g_initial_pd_caps.cur20);
-        lv_subject_copy_string(&twentyV, buf);
-    } else {
-        lv_subject_copy_string(&twentyV, "--");
-    }
-
-    // (no-op)
     while (1) {
         // Drain button events here (replaces vConsoleTask)
         event_msg_t msg;
@@ -500,7 +424,7 @@ static void director_task(void *arg)
                 // Other buttons handled in page-specific functions
                 switch(current_page) {
                     case PAGE_MAIN:     page_main(msg); break;
-                    case PAGE_POWER:    page_power(msg); break;
+                    case PAGE_POWER:    power_page_handle_event(msg); break;
                     case PAGE_SETTINGS: settings_page_handle_event(msg); break;
                     case PAGE_INFO:     page_info(msg); break;
                     default: break;
@@ -743,11 +667,8 @@ void page_main(event_msg_t msg){
         }
     }
 }
-    
-void page_power(event_msg_t msg){
-    // we are not handling any button events on this page for now
-}
 
 void page_info(event_msg_t msg){
-    // we are not handling any button events on this page for now
+    // No button events handled on this page currently
+    (void)msg;
 }
