@@ -116,6 +116,17 @@ static void timekeeper_cb(TimerHandle_t t) {
     lv_subject_copy_string(&opTime, text);
 }
 
+void timekeeper_clean()
+{
+    // Reset internal counters
+    timer_ss = 0;
+    timer_mm = 0;
+    timer_hh = 0;
+    // Ensure command shows START and opTime shows 00:00
+    lv_subject_copy_string(&command, "START");
+    lv_subject_copy_string(&opTime, "00:00");
+}
+
 void timekeeper_init()
 {
     timekeeper_main_timer = xTimerCreate("timekpr", pdMS_TO_TICKS(TIMEKEEPER_PERIOD_MS), pdTRUE, NULL, timekeeper_cb);

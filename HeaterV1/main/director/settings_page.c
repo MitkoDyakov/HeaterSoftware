@@ -5,6 +5,7 @@
 #include "director/backlight.h"
 #include <string.h>
 #include "pinout.h"
+#include "timekeeper.h"
 // Window/scroll constants
 #define WINDOW_COUNT 5
 #define ROW_HEIGHT_PX 23
@@ -129,10 +130,15 @@ static void settings_adjust_value(int activeSetting, int dir) {
                 break;
             }
             const char* cur = lv_subject_get_string(&timerType);
-            bool now_on = (cur && strcmp(cur, "ON") == 0);
+            bool was_on = (cur && strcmp(cur, "ON") == 0);
+            bool now_on = was_on;
             if (dir != 0) {
                 now_on = !now_on;
                 lv_subject_copy_string(&timerType, now_on ? "ON" : "OFF");
+                if (was_on && !now_on) {
+                    // Switched from TIMER mode to STOPWATCH -> clean timekeeper display/state
+                    timekeeper_clean();
+                }
             }
         } break;
         // TODO: implement FLIP (6) when behavior decided.
@@ -213,8 +219,13 @@ void settings_page_handle_event(event_msg_t msg) {
                             extern uint8_t opStat;
                             if (opStat == 0) { // Only allow toggle when stopped
                                 const char* tcur = lv_subject_get_string(&timerType);
-                                bool on = (tcur && strcmp(tcur, "ON") == 0);
-                                lv_subject_copy_string(&timerType, on ? "OFF" : "ON");
+                                bool was_on = (tcur && strcmp(tcur, "ON") == 0);
+                                bool now_on = !was_on;
+                                lv_subject_copy_string(&timerType, now_on ? "ON" : "OFF");
+                                if (was_on && !now_on) {
+                                    // Switched from TIMER mode to STOPWATCH -> clean timekeeper
+                                    timekeeper_clean();
+                                }
                             }
                         } else if (cur == 3) { // SOUND toggle
                             settings_toggle_sound();
