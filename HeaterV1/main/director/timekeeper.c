@@ -90,8 +90,15 @@ static void timekeeper_cb(TimerHandle_t t) {
             remaining_seconds = 0;
         }
 
+        // Round up remaining time to show full minute until it's actually elapsed
+        // E.g., with 59 seconds left, show 1 minute (not 0)
         uint8_t remaining_hh = (uint8_t)(remaining_seconds / 3600u);
-        uint8_t remaining_mm = (uint8_t)((remaining_seconds % 3600u) / 60u);
+        uint8_t remaining_mm = (uint8_t)((remaining_seconds % 3600u + 59u) / 60u);  // Round up to next minute
+        
+        // Cap at 59 minutes display
+        if (remaining_mm > 59) {
+            remaining_mm = 59;
+        }
 
         if (timer_ss & 1) {
             snprintf(text, sizeof(text), "%02u %02u", remaining_hh, remaining_mm);
