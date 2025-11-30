@@ -11,7 +11,7 @@
 // External global variables from director.c
 extern uint8_t opStat; // 0=stopped, 1=running
 extern QueueHandle_t g_i2c_queue;
-
+extern bool start_heater;
 // Timer edit mode state
 static bool s_timer_edit_mode = false;
 
@@ -22,11 +22,7 @@ static int s_preheat_target = 0;
 
 static void preheat_timer_cb(TimerHandle_t xTimer) {
     // Only transition if opStat is still running (STOP not pressed during preheat)
-    extern uint8_t opStat;
-    if (opStat) {
-        fireman_set_setpoints(s_preheat_target, s_preheat_target);
-        timekeeper_start();
-    }
+    start_heater = true;
     if (s_preheat_timer) {
         xTimerDelete(s_preheat_timer, 0);
         s_preheat_timer = NULL;
@@ -123,25 +119,9 @@ void main_page_handle_event(event_msg_t msg) {
             // Not in timer edit mode: normal start/stop logic
             opStat = !opStat;
             if (opStat) {
-                // Request higher PD voltage (20V preferred, else 15V) if available
-                uint8_t desired = 0;
-                if (s_pd_caps.twentyV) desired = 20; 
-                else if (s_pd_caps.fifteenV) desired = 15; 
-                else desired = 0;
-                request_pd_voltage(desired);
-                lv_subject_set_int(&activePDO, desired);
-
                 int preheat = lv_subject_get_int(&preHeat);
-                int target = lv_subject_get_int(&targetTemp);
-                if (target < 0) target = 0;
-                if (target > 60) target = 60; 
-                s_preheat_target = target;
-
                 if (preheat == 0) {                   
-                    fireman_set_setpoints(target, target);
-                    fireman_set_heater1_enabled(true);
-                    fireman_set_heater2_enabled(true);
-                    timekeeper_start();
+                    start_heater = true;
                 } else {
                    // Preheat phase: set to preheat temp, start one-shot timer                    
                     if (s_preheat_timer) {

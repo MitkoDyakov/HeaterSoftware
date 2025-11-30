@@ -35,6 +35,7 @@
 #include "settings_page.h"
 #include "power_page.h"
 #include "main_page.h"
+#include "composer/composer.h"
 
 // ===================== DEFINITIONS AND MACROS =====================
 
@@ -58,6 +59,8 @@ enum {
 };
 
 // ===================== GLOBAL VARIABLES =====================
+
+bool start_heater = false;
 
 esp_lcd_panel_handle_t panel_handle = NULL; // Global panel handle
 
@@ -384,6 +387,30 @@ static void director_task(void *arg)
         // Check tilt pin and update display orientation if needed
         orientation_check_and_update();
         
+        // check if we need to start the heater
+
+        if(start_heater)
+        {
+            uint8_t desired = 0;
+            if (g_initial_pd_caps.twentyV) desired = 20; 
+            else if (g_initial_pd_caps.fifteenV) desired = 15; 
+            else desired = 0;
+            request_pd_voltage(desired);
+            lv_subject_set_int(&activePDO, desired);
+
+            int target = lv_subject_get_int(&targetTemp);
+            if (target < 0) target = 0;
+            if (target > 60) target = 60; 
+
+            composer_short_beep();
+
+            fireman_set_setpoints(target, target);
+            fireman_set_heater1_enabled(true);
+            fireman_set_heater2_enabled(true);
+            timekeeper_start();
+            start_heater = false;
+        }
+
         // Check if timer finished (safe context, no ISR)
         if (timekeeper_is_done()) {
             opStat = false;
