@@ -109,15 +109,24 @@ static void timekeeper_cb(TimerHandle_t t) {
     }
 
     if (timekeeper_mode == TIMER) {
-        // Countdown: decrement elapsed time, minute decreases after 60 seconds
-        uint8_t remaining_hh = target_timer_hh;
-        uint8_t remaining_mm = target_timer_mm;
+        // Proper countdown based on total seconds to avoid underflow/overflow
+        uint32_t target_seconds  = (uint32_t)target_timer_hh * 3600u + (uint32_t)target_timer_mm * 60u;
+        uint32_t elapsed_seconds = (uint32_t)timer_hh * 3600u + (uint32_t)timer_mm * 60u + (uint32_t)timer_ss;
+        uint32_t remaining_seconds = 0;
+        if (elapsed_seconds < target_seconds) {
+            remaining_seconds = target_seconds - elapsed_seconds;
+        } else {
+            remaining_seconds = 0;
+        }
+
+        // Round up remaining time to show full minute until it's actually elapsed
+        // E.g., with 59 seconds left, show 1 minute (not 0)
+        uint8_t remaining_hh = (uint8_t)(remaining_seconds / 3600u);
+        uint8_t remaining_mm = (uint8_t)((remaining_seconds % 3600u + 59u) / 60u);  // Round up to next minute
         
-        // Decrement minutes based on elapsed time
-        if (timer_mm > 0) {
-            remaining_mm -= timer_mm;
-        } else if (timer_hh > 0) {
-            remaining_hh -= timer_hh;
+        // Cap at 59 minutes display
+        if (remaining_mm > 59) {
+            remaining_mm = 59;
         }
 
         if (timer_ss & 1) {
@@ -126,13 +135,24 @@ static void timekeeper_cb(TimerHandle_t t) {
             snprintf(text, sizeof(text), "%02u:%02u", remaining_hh, remaining_mm);
         }
 
-        if (remaining_hh == 0 && remaining_mm == 0 && timer_ss == 0) {
+        if (remaining_seconds == 0u) {
             timekeeper_stop();
             return;
         }
     }
         
     lv_subject_copy_string(&opTime, text);
+}
+
+void timekeeper_refresh_gui()
+{
+    // Reset internal counters
+    timer_ss = 0;
+    timer_mm = 0;
+    timer_hh = 0;
+    // Ensure command shows START and opTime shows 00:00
+    lv_subject_copy_string(&command, "START");
+    lv_subject_copy_string(&opTime, "00:00");
 }
 
 void timekeeper_init()

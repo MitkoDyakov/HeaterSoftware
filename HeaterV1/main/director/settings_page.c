@@ -3,10 +3,9 @@
 #include "wiseman/wiseman.h"
 #include "wiseman/wiseman_persist.h"
 #include "director/backlight.h"
-#include "timekeeper.h"
 #include <string.h>
 #include "pinout.h"
-#include "esp_log.h"
+#include "timekeeper.h"
 // Window/scroll constants
 #define WINDOW_COUNT 5
 #define ROW_HEIGHT_PX 23
@@ -77,14 +76,6 @@ static void settings_toggle_sound(void) {
         lv_subject_copy_string(&soundEnable, "ON");
 }
 
-static void settings_toggle_timer(void) {
-    const char* cur = lv_subject_get_string(&timerType);
-    if (cur && strcmp(cur, "ON") == 0)
-        lv_subject_copy_string(&timerType, "OFF");
-    else
-        lv_subject_copy_string(&timerType, "ON");
-}
-
 static void settings_cycle_flip(void) {
     const char* cur = lv_subject_get_string(&orientation);
     
@@ -132,8 +123,22 @@ static void settings_adjust_value(int activeSetting, int dir) {
             lv_subject_set_int(&preHeat, p);
         } break;
         case 2: { // TIMER toggle OFF/ON
+            // Prevent toggling timer mode while heater is running
+            extern uint8_t opStat; // 0=stopped, 1=running
+            if (opStat != 0) {
+                // Heater is running - ignore toggle request
+                break;
+            }
+            const char* cur = lv_subject_get_string(&timerType);
+            bool was_on = (cur && strcmp(cur, "ON") == 0);
+            bool now_on = was_on;
             if (dir != 0) {
-                settings_toggle_timer();
+                now_on = !now_on;
+                lv_subject_copy_string(&timerType, now_on ? "ON" : "OFF");
+                if (was_on && !now_on) {
+                    // Switched from TIMER mode to STOPWATCH -> clean timekeeper display/state
+                    timekeeper_clean();
+                }
             }
         } break;
         // TODO: implement FLIP (6) when behavior decided.
@@ -156,7 +161,7 @@ void settings_page_blink_cb(lv_timer_t *t) {
     }
 }
 
-void settings_page_enter(lv_obj_t *page_container) {
+void page_settings_create(lv_obj_t *page_container) {
     s_page_container = page_container;
     (void)settings_create(s_page_container);
     s_settings_edit_mode = false;
@@ -208,14 +213,20 @@ void settings_page_handle_event(event_msg_t msg) {
                         int cur = lv_subject_get_int(&settingsSelect);
                         if (cur < 0) cur = s_settings_selected_idx;
                         if (cur < 0) cur = 0; else if (cur >= SETTINGS_COUNT) cur = SETTINGS_COUNT - 1;
-                        // Direct toggle rows: TIMER(2), SOUND(3), FLIP(6)
+                        // Direct toggle rows: TIMER(2), SOUND(3) (FLIP(6) placeholder)
                         if (cur == 2) { // TIMER toggle
-                            // Prevent toggling timer mode while timer is running
-                            if (!timekeeper_is_done()) {
-                                ESP_LOGW("settings", "Cannot toggle timer mode while timer is active");
-                                break;
+                            // Prevent toggling timer mode while heater is running
+                            extern uint8_t opStat;
+                            if (opStat == 0) { // Only allow toggle when stopped
+                                const char* tcur = lv_subject_get_string(&timerType);
+                                bool was_on = (tcur && strcmp(tcur, "ON") == 0);
+                                bool now_on = !was_on;
+                                lv_subject_copy_string(&timerType, now_on ? "ON" : "OFF");
+                                if (was_on && !now_on) {
+                                    // Switched from TIMER mode to STOPWATCH -> clean timekeeper
+                                    timekeeper_clean();
+                                }
                             }
-                            settings_toggle_timer();
                         } else if (cur == 3) { // SOUND toggle
                             settings_toggle_sound();
                         } else if (cur == 6) { // FLIP cycle
@@ -259,7 +270,7 @@ void settings_page_handle_event(event_msg_t msg) {
     }
 }
 
-void settings_page_leave(void) {
+void page_settings_cleanup(void) {
     // Persist settings on leaving Settings page
     s_settings_edit_mode = false;
     s_settings_blink_on = false;

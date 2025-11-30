@@ -48,6 +48,7 @@
         <!-- Settigns page -->
         <int name="scrollPosition" value="0"/>
         <string name="timerType" value="OFF"/>
+        <int name="heaterRunning" value="0"/>
         <string name="orientation" value="AUTO"/>
         <int name="settingsSelect" value="0"/>
         <int name="default_temp" value="30"/>

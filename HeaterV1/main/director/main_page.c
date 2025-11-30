@@ -1,0 +1,210 @@
+#include "main_page.h"
+#include "HeaterGUI_gen.h"
+#include "fireman/fireman.h"
+#include "mailman/mailman.h"
+#include "wiseman/wiseman.h"
+#include "timekeeper.h"
+#include "esp_log.h"
+#include <string.h>
+#include "pinout.h"
+
+// External global variables from director.c
+extern uint8_t opStat; // 0=stopped, 1=running
+extern QueueHandle_t g_i2c_queue;
+
+// Timer edit mode state
+static bool s_timer_edit_mode = false;
+
+// Cached PD capabilities from director init
+static ap33772s_caps_t s_pd_caps = {0};
+
+// Forward declaration for helper function
+static bool request_pd_voltage(uint8_t voltage);
+
+void page_main_create(lv_obj_t *container, const ap33772s_caps_t *initial_pd_caps) {
+    if (initial_pd_caps) {
+        s_pd_caps = *initial_pd_caps;
+    }
+    
+    // Create main page UI elements (temperature target and control)
+    lv_obj_t *row_4 = row_create(container);
+    lv_obj_set_width(row_4, 141);
+    lv_obj_set_height(row_4, 83);
+
+    lv_obj_t *target_tmp_0 = target_tmp_create(row_4, &targetTemp);
+    lv_obj_set_style_pad_all(target_tmp_0, 0, 0);
+
+    lv_obj_t *row_5 = row_create(container);
+    lv_obj_set_width(row_5, 141);
+    lv_obj_set_height(row_5, 39);
+    lv_obj_set_style_margin_top(row_5, 4, 0);
+
+    lv_obj_t *control_0 = control_create(row_5, &command, &opTime);
+    lv_obj_set_style_pad_all(control_0, 0, 0);
+}
+
+void page_main_cleanup(void) {
+    // Reset timer edit mode when leaving page
+    s_timer_edit_mode = false;
+}
+
+/* Helper: request PD voltage change through mailman */
+static bool request_pd_voltage(uint8_t voltage) {
+    if (!g_i2c_queue || (voltage != 5 && voltage != 9 && voltage != 15 && voltage != 20)) {
+        return false;
+    }
+    i2c_msg_t msg = {0};
+    msg.type = I2C_MSG_PD_SET_PDO;
+    msg.data.pd_set.set_voltage = voltage;
+    QueueHandle_t resp = xQueueCreate(1, sizeof(bool));
+    if (!resp) return false;
+    msg.response_queue = resp;
+    bool ok = false;
+    if (xQueueSend(g_i2c_queue, &msg, pdMS_TO_TICKS(50)) == pdTRUE) {
+        if (xQueueReceive(resp, &ok, pdMS_TO_TICKS(200)) == pdTRUE) {
+            // Success - response received
+        } else {
+            ok = false; // timeout
+        }
+    }
+    vQueueDelete(resp);
+    return ok;
+}
+
+void main_page_handle_event(event_msg_t msg) {
+    // Check if timer mode is enabled in wiseman
+    const wiseman_settings_t* settings = wiseman_get();
+    bool timer_mode_enabled = (settings && settings->timer_mode);
+    
+    if (msg.event == BUTTON_EVENT_SHORT) {
+        if (msg.btn_id == BUTTON_RIGHT_BOTTOM && s_timer_edit_mode) {
+            // In edit mode: exit on bottom-right short press
+            timekeeper_timer_stop_edit();
+            s_timer_edit_mode = false;
+        } else if (s_timer_edit_mode) {
+            // In edit mode: handle increment/decrement buttons
+            if (msg.btn_id == BUTTON_LEFT_TOP) {
+                timekeeper_increment_hour();
+            } else if (msg.btn_id == BUTTON_LEFT_CENTER) {
+                timekeeper_decrement_hour();
+            } else if (msg.btn_id == BUTTON_RIGHT_TOP) {
+                timekeeper_increment_minute();
+            } else if (msg.btn_id == BUTTON_RIGHT_CENTER) {
+                timekeeper_decrement_minute();
+            }
+            return; // Don't process other button logic while in edit mode
+        } else if (msg.btn_id == BUTTON_RIGHT_BOTTOM) {
+            // Not in timer edit mode: normal start/stop logic
+            opStat = !opStat;
+            if (opStat) {
+                timekeeper_start();
+                // START pressed: configure heaters
+                int target = lv_subject_get_int(&targetTemp);
+                if (target < 0) target = 0; else if (target > 60) target = 60;
+                // Apply the same target to both internal PID controllers for now
+                fireman_set_setpoints(target, target);
+                // Determine which channels to enable based on activeCh selection
+                const char* chsel = lv_subject_get_string(&activeCh);
+                bool en1 = false, en2 = false;
+                if (chsel) {
+                    if (strcmp(chsel, "CH1") == 0) { en1 = true; en2 = false; }
+                    else if (strcmp(chsel, "CH2") == 0) { en1 = false; en2 = true; }
+                    else { en1 = true; en2 = true; } // "CH1/2" or fallback
+                } else { en1 = true; en2 = true; }
+                fireman_set_heater1_enabled(en1);
+                fireman_set_heater2_enabled(en2);
+                // Request higher PD voltage (20V preferred, else 15V) if available
+                uint8_t desired = 0;
+                if (s_pd_caps.twentyV) desired = 20; 
+                else if (s_pd_caps.fifteenV) desired = 15; 
+                else desired = 0;
+                if (desired) {
+                    bool ok = request_pd_voltage(desired);
+                    // If 20V failed and we tried it first, optionally fall back to 15V if available
+                    if (!ok && desired == 20 && s_pd_caps.fifteenV) {
+                        ok = request_pd_voltage(15);
+                        if (ok) desired = 15; // reflect fallback voltage
+                    }
+                    ESP_LOGI("main_page.pd", "START PD request -> target=%uV result=%d", (unsigned)desired, (int)ok);
+                    if (ok) lv_subject_set_int(&activePDO, desired);
+                } else {
+                    ESP_LOGI("main_page.pd", "START no higher PD voltage available (stay at 5V)");
+                }
+                ESP_LOGI("main_page.heaters", "Heaters START target=%dC ch1=%d ch2=%d", target, en1, en2);
+            } else {
+                timekeeper_stop();
+                // STOP pressed: disable both heaters (setpoints retained for next start)
+                fireman_set_heater1_enabled(false);
+                fireman_set_heater2_enabled(false);
+                // Revert PD voltage to 5V (ignore failure)
+                bool ok = request_pd_voltage(5);
+                ESP_LOGI("main_page.pd", "STOP PD request 5V result=%d", (int)ok);
+                if (ok) lv_subject_set_int(&activePDO, 5);
+                ESP_LOGI("main_page.heaters", "Heaters STOP (disabled all)");
+            }
+        } else if (msg.btn_id == BUTTON_RIGHT_TOP) {
+            // INCREMENT temperature (short press)
+            int t = lv_subject_get_int(&targetTemp) + 1;
+            if (t < 61) {
+                lv_subject_set_int(&targetTemp, t);
+                // Live update while running
+                if (opStat) {
+                    int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                    fireman_set_setpoints(clamped, clamped);
+                }
+            }
+        } else if (msg.btn_id == BUTTON_RIGHT_CENTER) {
+            // DECREMENT temperature (short press)
+            int t = lv_subject_get_int(&targetTemp) - 1;
+            if (t > -1) {
+                lv_subject_set_int(&targetTemp, t);
+                // Live update while running
+                if (opStat) {
+                    int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                    fireman_set_setpoints(clamped, clamped);
+                }
+            }
+        }
+    } else if (msg.event == BUTTON_EVENT_REPEAT) {
+        switch (msg.btn_id) {
+            case BUTTON_RIGHT_TOP: { // "RIGHT_TOP" (increment hold)
+                if (!s_timer_edit_mode) {
+                    int t = lv_subject_get_int(&targetTemp) + 1;
+                    if (t < 61) {
+                        lv_subject_set_int(&targetTemp, t);
+                        if (opStat) {
+                            int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                            fireman_set_setpoints(clamped, clamped);
+                        }
+                    }
+                }
+            } break;
+
+            case BUTTON_RIGHT_CENTER: { // "RIGHT_CENTER" (decrement hold)
+                if (!s_timer_edit_mode) {
+                    int t = lv_subject_get_int(&targetTemp) - 1;
+                    if (t > -1) {
+                        lv_subject_set_int(&targetTemp, t);
+                        if (opStat) {
+                            int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
+                            fireman_set_setpoints(clamped, clamped);
+                        }
+                    }
+                }
+            } break;
+            
+            case BUTTON_RIGHT_BOTTOM: { // "RIGHT_BOTTOM" (long hold to enter timer edit)
+                static uint8_t count = 0;
+                if(count == 3){ // after 3 repeats (~3s)
+                    if (timer_mode_enabled && !s_timer_edit_mode) {
+                        timekeeper_timer_start_edit();
+                        s_timer_edit_mode = true;
+                        ESP_LOGI("main_page.timer", "Entered timer edit mode");
+                    }
+                    count = 0; // reset count
+                }
+                count++;
+            } break;
+        }
+    }
+}

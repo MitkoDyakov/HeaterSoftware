@@ -15,6 +15,8 @@ idf_component_register(
         "director/orientation.c"
         "director/timekeeper.c"
         "director/settings_page.c"
+        "director/power_page.c"
+        "director/main_page.c"
         "director/HeaterGUI/HeaterGUI_gen.c"
         "director/HeaterGUI/HeaterGUI.c"
         "director/HeaterGUI/ui.c"

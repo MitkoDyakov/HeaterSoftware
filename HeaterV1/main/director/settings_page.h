@@ -8,9 +8,9 @@
 // Increase this when adding new settings; navigation/clamping logic uses it.
 #define SETTINGS_COUNT 7
 
-void settings_page_enter(lv_obj_t *page_container);
+void page_settings_create(lv_obj_t *page_container);
 void settings_page_handle_event(event_msg_t msg);
-void settings_page_leave(void); // persist + cleanup when leaving page
+void page_settings_cleanup(void); // persist + cleanup when leaving page
 void settings_page_blink_cb(lv_timer_t *t);
 
 #endif // SETTINGS_PAGE_H

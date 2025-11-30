@@ -79,6 +79,9 @@ bool wiseman_save_now(void);
 // Reset to compiled defaults and save
 bool wiseman_reset_to_defaults(void);
 
+// Sync current settings to LVGL UI subjects (called after LVGL init)
+void wiseman_sync_to_ui(void);
+
 #ifdef __cplusplus
 }
 #endif
