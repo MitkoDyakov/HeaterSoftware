@@ -18,5 +18,6 @@ void timekeeper_increment_hour(void);
 bool timekeeper_is_done(void);
 void timekeeper_refresh();
 bool timekeeper_is_done(void); 
+void timekeeper_preheat(void);  
 
 #endif // TIMEKEEPER_H

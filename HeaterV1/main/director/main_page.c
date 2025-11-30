@@ -15,6 +15,24 @@ extern QueueHandle_t g_i2c_queue;
 // Timer edit mode state
 static bool s_timer_edit_mode = false;
 
+// Preheat timer handle
+#include "freertos/timers.h"
+static TimerHandle_t s_preheat_timer = NULL;
+static int s_preheat_target = 0;
+
+static void preheat_timer_cb(TimerHandle_t xTimer) {
+    // Only transition if opStat is still running (STOP not pressed during preheat)
+    extern uint8_t opStat;
+    if (opStat) {
+        fireman_set_setpoints(s_preheat_target, s_preheat_target);
+        timekeeper_start();
+    }
+    if (s_preheat_timer) {
+        xTimerDelete(s_preheat_timer, 0);
+        s_preheat_timer = NULL;
+    }
+}
+
 // Cached PD capabilities from director init
 static ap33772s_caps_t s_pd_caps = {0};
 
@@ -105,50 +123,51 @@ void main_page_handle_event(event_msg_t msg) {
             // Not in timer edit mode: normal start/stop logic
             opStat = !opStat;
             if (opStat) {
-                timekeeper_start();
-                // START pressed: configure heaters
-                int target = lv_subject_get_int(&targetTemp);
-                if (target < 0) target = 0; else if (target > 60) target = 60;
-                // Apply the same target to both internal PID controllers for now
-                fireman_set_setpoints(target, target);
-                // Determine which channels to enable based on activeCh selection
-                const char* chsel = lv_subject_get_string(&activeCh);
-                bool en1 = false, en2 = false;
-                if (chsel) {
-                    if (strcmp(chsel, "CH1") == 0) { en1 = true; en2 = false; }
-                    else if (strcmp(chsel, "CH2") == 0) { en1 = false; en2 = true; }
-                    else { en1 = true; en2 = true; } // "CH1/2" or fallback
-                } else { en1 = true; en2 = true; }
-                fireman_set_heater1_enabled(en1);
-                fireman_set_heater2_enabled(en2);
                 // Request higher PD voltage (20V preferred, else 15V) if available
                 uint8_t desired = 0;
                 if (s_pd_caps.twentyV) desired = 20; 
                 else if (s_pd_caps.fifteenV) desired = 15; 
                 else desired = 0;
-                if (desired) {
-                    bool ok = request_pd_voltage(desired);
-                    // If 20V failed and we tried it first, optionally fall back to 15V if available
-                    if (!ok && desired == 20 && s_pd_caps.fifteenV) {
-                        ok = request_pd_voltage(15);
-                        if (ok) desired = 15; // reflect fallback voltage
-                    }
-                    ESP_LOGI("main_page.pd", "START PD request -> target=%uV result=%d", (unsigned)desired, (int)ok);
-                    if (ok) lv_subject_set_int(&activePDO, desired);
+                request_pd_voltage(desired);
+                lv_subject_set_int(&activePDO, desired);
+
+                int preheat = lv_subject_get_int(&preHeat);
+                int target = lv_subject_get_int(&targetTemp);
+                if (target < 0) target = 0;
+                if (target > 60) target = 60; 
+                s_preheat_target = target;
+
+                if (preheat == 0) {                   
+                    fireman_set_setpoints(target, target);
+                    fireman_set_heater1_enabled(true);
+                    fireman_set_heater2_enabled(true);
+                    timekeeper_start();
                 } else {
-                    ESP_LOGI("main_page.pd", "START no higher PD voltage available (stay at 5V)");
+                   // Preheat phase: set to preheat temp, start one-shot timer                    
+                    if (s_preheat_timer) {
+                        xTimerDelete(s_preheat_timer, 0);
+                        s_preheat_timer = NULL;
+                    }
+                    s_preheat_timer = xTimerCreate("preheat", preheat * 60 * 1000 / portTICK_PERIOD_MS, pdFALSE, NULL, preheat_timer_cb);
+                    if (s_preheat_timer) {
+                        xTimerStart(s_preheat_timer, 0);
+                    }
+                    fireman_set_setpoints(55, 55);
+                    fireman_set_heater1_enabled(true);
+                    fireman_set_heater2_enabled(true);
+                    timekeeper_preheat();
                 }
-                ESP_LOGI("main_page.heaters", "Heaters START target=%dC ch1=%d ch2=%d", target, en1, en2);
             } else {
+                // STOP pressed: always cancel preheat if active, stop everything
+                if (s_preheat_timer) {
+                    xTimerDelete(s_preheat_timer, 0);
+                    s_preheat_timer = NULL;
+                }
                 timekeeper_stop();
-                // STOP pressed: disable both heaters (setpoints retained for next start)
                 fireman_set_heater1_enabled(false);
                 fireman_set_heater2_enabled(false);
-                // Revert PD voltage to 5V (ignore failure)
-                bool ok = request_pd_voltage(5);
-                ESP_LOGI("main_page.pd", "STOP PD request 5V result=%d", (int)ok);
-                if (ok) lv_subject_set_int(&activePDO, 5);
-                ESP_LOGI("main_page.heaters", "Heaters STOP (disabled all)");
+                request_pd_voltage(5);
+                lv_subject_set_int(&activePDO, 5);
             }
         } else if (msg.btn_id == BUTTON_RIGHT_TOP) {
             // INCREMENT temperature (short press)

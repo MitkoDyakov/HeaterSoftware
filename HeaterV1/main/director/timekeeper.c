@@ -144,6 +144,13 @@ static void timekeeper_cb(lv_timer_t *t) {
     lv_subject_copy_string(&opTime, text);
 }
 
+void timekeeper_preheat()
+{
+    lv_subject_copy_string(&command, "");
+    lv_subject_copy_string(&opTime, "PREHEATING...");
+    timekeeper_finished = false;
+}
+
 void timekeeper_refresh_gui()
 {
     // Reset internal counters
