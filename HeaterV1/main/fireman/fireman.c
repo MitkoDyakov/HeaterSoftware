@@ -11,6 +11,7 @@
 #include "mailman/mailman.h"
 #include "pinout.h"
 #include "wiseman/wiseman.h"
+#include "HeaterGUI_gen.h"
 
 #define BOARD_MAX_TEMPERATURE_C            60.0f  /* °C – shut off above this */
 #define CONTROL_PERIOD_MILLISECONDS_ACTIVE 500     /* 500 ms when heating active */
@@ -172,11 +173,15 @@ bool fireman_init(QueueHandle_t i2c_queue, QueueHandle_t jumbotron_queue)
 }
 
 void fireman_set_heater1_enabled(bool en) { 
-    heater1_enabled = en; 
+    heater1_enabled = en;
+    // Update UI subject: heaterRunning is 1 if ANY heater is enabled
+    lv_subject_set_int(&heaterRunning, (heater1_enabled || heater2_enabled) ? 1 : 0);
 }
 
 void fireman_set_heater2_enabled(bool en) { 
-    heater2_enabled = en; 
+    heater2_enabled = en;
+    // Update UI subject: heaterRunning is 1 if ANY heater is enabled
+    lv_subject_set_int(&heaterRunning, (heater1_enabled || heater2_enabled) ? 1 : 0);
 }
 
 void fireman_set_setpoint1(int setpoint_c) {

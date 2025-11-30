@@ -1,5 +1,4 @@
-#include "freertos/FreeRTOS.h"
-#include "freertos/timers.h"
+#include <stddef.h>
 #include <stdio.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -17,9 +16,10 @@ enum {
     MESSAGE = 2
 };
 
-// UI Clock via LVGL timer
-static TimerHandle_t timekeeper_main_timer = NULL;
-static TimerHandle_t timekeeper_edit_timer = NULL;
+// Timers switched to LVGL timers for safe UI updates
+static lv_timer_t *timekeeper_main_timer = NULL;   // 1s periodic
+static lv_timer_t *timekeeper_edit_timer = NULL;   // 300ms blink during edit
+static bool timekeeper_running = false;            // track paused/resumed state
 
 // op time counters
 static uint8_t timer_ss = 0;
@@ -37,7 +37,7 @@ static bool timekeeper_finished = true;  // Flag to signal timer completion to m
 
 void timekeeper_refresh()
 {
-    if (xTimerIsTimerActive(timekeeper_main_timer) == pdFALSE)
+    if (!timekeeper_running)
     {
         const wiseman_settings_t* settings = wiseman_get();
         if (settings && settings->timer_mode) {
@@ -64,7 +64,7 @@ void timekeeper_refresh()
     }
 }
 
-static void timekeeper_edit_cb(TimerHandle_t t) {
+static void timekeeper_edit_cb(lv_timer_t *t) {
     if (visible_flag && blinkCounter == 4) {
         blinkCounter = 0;
         visible_flag = false;
@@ -76,7 +76,7 @@ static void timekeeper_edit_cb(TimerHandle_t t) {
     blinkCounter++;
 }
 
-static void timekeeper_cb(TimerHandle_t t) {
+static void timekeeper_cb(lv_timer_t *t) {
     (void)t;
     // update counters
     char text[10];
@@ -157,8 +157,12 @@ void timekeeper_refresh_gui()
 
 void timekeeper_init()
 {
-    timekeeper_main_timer = xTimerCreate("timekpr", pdMS_TO_TICKS(TIMEKEEPER_PERIOD_MS), pdTRUE, NULL, timekeeper_cb);
-    timekeeper_edit_timer = xTimerCreate("timekpr_edit", pdMS_TO_TICKS(300), pdTRUE, NULL, timekeeper_edit_cb);
+    timekeeper_main_timer = lv_timer_create(timekeeper_cb, TIMEKEEPER_PERIOD_MS, NULL);
+    lv_timer_pause(timekeeper_main_timer);
+    timekeeper_edit_timer = lv_timer_create(timekeeper_edit_cb, 300, NULL);
+    lv_timer_pause(timekeeper_edit_timer);
+
+    timekeeper_running = false;
 
     timer_ss = 0;
     timer_mm = 0;
@@ -192,13 +196,15 @@ void timekeeper_start(void)
     }
 
     timekeeper_finished = false;  // Reset completion flag when starting
-    xTimerStart(timekeeper_main_timer, 0);
+    lv_timer_resume(timekeeper_main_timer);
+    timekeeper_running = true;
     lv_subject_copy_string(&command, "STOP");
 }
 
 void timekeeper_stop(void)
 {
-    xTimerStop(timekeeper_main_timer, 0);
+    lv_timer_pause(timekeeper_main_timer);
+    timekeeper_running = false;
     timer_ss = 0;
     timer_mm = 0;
     timer_hh = 0;
@@ -269,13 +275,13 @@ void timekeeper_decrement_minute(void)
 
 void timekeeper_timer_start_edit(void)
 {
-    xTimerStart(timekeeper_edit_timer, 0);
+    lv_timer_resume(timekeeper_edit_timer);
 }   
 
 void timekeeper_timer_stop_edit(void)
 {
     lv_subject_set_int(&opTimeVisible, 1);
-    xTimerStop(timekeeper_edit_timer, 0);   
+    lv_timer_pause(timekeeper_edit_timer);   
 }
 
 bool timekeeper_is_done(void)
