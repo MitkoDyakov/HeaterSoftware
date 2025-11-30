@@ -77,23 +77,31 @@ void main_page_handle_event(event_msg_t msg) {
     bool timer_mode_enabled = (settings && settings->timer_mode);
     
     if (msg.event == BUTTON_EVENT_SHORT) {
-        if (msg.btn_id == BUTTON_RIGHT_BOTTOM && s_timer_edit_mode) {
-            // In edit mode: exit on bottom-right short press
-            timekeeper_timer_stop_edit();
-            s_timer_edit_mode = false;
-        } else if (s_timer_edit_mode) {
-            // In edit mode: handle increment/decrement buttons
-            if (msg.btn_id == BUTTON_LEFT_TOP) {
-                timekeeper_increment_hour();
-            } else if (msg.btn_id == BUTTON_LEFT_CENTER) {
-                timekeeper_decrement_hour();
-            } else if (msg.btn_id == BUTTON_RIGHT_TOP) {
-                timekeeper_increment_minute();
-            } else if (msg.btn_id == BUTTON_RIGHT_CENTER) {
-                timekeeper_decrement_minute();
+        if (s_timer_edit_mode) {
+            // In edit mode: handle all buttons
+            switch (msg.btn_id) {
+                case BUTTON_LEFT_TOP:
+                    timekeeper_increment_hour();
+                    break;
+                case BUTTON_LEFT_CENTER:
+                    timekeeper_decrement_hour();
+                    break;
+                case BUTTON_RIGHT_TOP:
+                    timekeeper_increment_minute();
+                    break;
+                case BUTTON_RIGHT_CENTER:
+                    timekeeper_decrement_minute();
+                    break;
+                case BUTTON_RIGHT_BOTTOM:
+                    // Exit edit mode
+                    timekeeper_timer_stop_edit();
+                    s_timer_edit_mode = false;
+                    break;
             }
             return; // Don't process other button logic while in edit mode
-        } else if (msg.btn_id == BUTTON_RIGHT_BOTTOM) {
+        }
+        
+        if (msg.btn_id == BUTTON_RIGHT_BOTTOM) {
             // Not in timer edit mode: normal start/stop logic
             opStat = !opStat;
             if (opStat) {
@@ -179,7 +187,6 @@ void main_page_handle_event(event_msg_t msg) {
                     }
                 }
             } break;
-
             case BUTTON_RIGHT_CENTER: { // "RIGHT_CENTER" (decrement hold)
                 if (!s_timer_edit_mode) {
                     int t = lv_subject_get_int(&targetTemp) - 1;
@@ -191,8 +198,7 @@ void main_page_handle_event(event_msg_t msg) {
                         }
                     }
                 }
-            } break;
-            
+            } break;            
             case BUTTON_RIGHT_BOTTOM: { // "RIGHT_BOTTOM" (long hold to enter timer edit)
                 static uint8_t count = 0;
                 if(count == 3){ // after 3 repeats (~3s)
