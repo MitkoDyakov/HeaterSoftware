@@ -116,7 +116,7 @@ static void timekeeper_cb(TimerHandle_t t) {
     lv_subject_copy_string(&opTime, text);
 }
 
-void timekeeper_clean()
+void timekeeper_refresh_gui()
 {
     // Reset internal counters
     timer_ss = 0;

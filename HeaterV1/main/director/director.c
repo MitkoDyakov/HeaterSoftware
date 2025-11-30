@@ -432,7 +432,7 @@ bool director_init(QueueHandle_t button_event_queue, QueueHandle_t sample_queue,
 
     // Note: UI updates moved to director_task after LVGL initialization
 
-    timekeeper_init(NULL);
+    timekeeper_init();
 
     BaseType_t ok = xTaskCreate(director_task, "director", 12288, NULL, 6, NULL);
     return (ok == pdPASS);
