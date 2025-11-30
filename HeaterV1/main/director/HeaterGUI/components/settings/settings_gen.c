@@ -37,6 +37,7 @@ lv_obj_t * settings_create(lv_obj_t * parent)
 
     static lv_style_t main;
     static lv_style_t selected;
+    static lv_style_t inactive;
 
     static bool style_inited = false;
 
@@ -52,6 +53,9 @@ lv_obj_t * settings_create(lv_obj_t * parent)
         lv_style_init(&selected);
         lv_style_set_text_color(&selected, SUBTEXT);
         lv_style_set_text_opa(&selected, 255);
+
+        lv_style_init(&inactive);
+        lv_style_set_opa(&inactive, 100);
 
         style_inited = true;
     }
@@ -121,6 +125,8 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_t * row_1 = row_create(scrollColumn);
     lv_obj_set_width(row_1, lv_pct(100));
     lv_obj_set_height(row_1, 23);
+    lv_obj_add_style(row_1, &inactive, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(row_1, &heaterRunning, LV_STATE_CHECKED, 1);
 
     lv_obj_t * column_3 = column_create(row_1);
     lv_obj_set_width(column_3, 24);
@@ -170,6 +176,8 @@ lv_obj_t * settings_create(lv_obj_t * parent)
     lv_obj_t * row_2 = row_create(scrollColumn);
     lv_obj_set_width(row_2, lv_pct(100));
     lv_obj_set_height(row_2, 23);
+    lv_obj_add_style(row_2, &inactive, LV_STATE_CHECKED);
+    lv_obj_bind_state_if_eq(row_2, &heaterRunning, LV_STATE_CHECKED, 1);
 
     lv_obj_t * column_6 = column_create(row_2);
     lv_obj_set_width(column_6, 24);

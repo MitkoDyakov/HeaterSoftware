@@ -99,6 +99,7 @@ lv_subject_t opTime;
 lv_subject_t command;
 lv_subject_t scrollPosition;
 lv_subject_t timerType;
+lv_subject_t heaterRunning;
 lv_subject_t orientation;
 lv_subject_t settingsSelect;
 lv_subject_t default_temp;
@@ -218,6 +219,7 @@ void HeaterGUI_init_gen(const char * asset_path)
                             UI_SUBJECT_STRING_LENGTH,
                             "OFF"
                           );
+    lv_subject_init_int(&heaterRunning, 0);
     static char orientation_buf[UI_SUBJECT_STRING_LENGTH];
     static char orientation_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&orientation,
@@ -345,6 +347,7 @@ void HeaterGUI_init_gen(const char * asset_path)
     lv_xml_register_subject(NULL, "command", &command);
     lv_xml_register_subject(NULL, "scrollPosition", &scrollPosition);
     lv_xml_register_subject(NULL, "timerType", &timerType);
+    lv_xml_register_subject(NULL, "heaterRunning", &heaterRunning);
     lv_xml_register_subject(NULL, "orientation", &orientation);
     lv_xml_register_subject(NULL, "settingsSelect", &settingsSelect);
     lv_xml_register_subject(NULL, "default_temp", &default_temp);

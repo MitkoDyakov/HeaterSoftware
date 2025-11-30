@@ -107,6 +107,7 @@ extern lv_subject_t opTime;
 extern lv_subject_t command;
 extern lv_subject_t scrollPosition;
 extern lv_subject_t timerType;
+extern lv_subject_t heaterRunning;
 extern lv_subject_t orientation;
 extern lv_subject_t settingsSelect;
 extern lv_subject_t default_temp;
