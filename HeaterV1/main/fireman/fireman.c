@@ -185,19 +185,16 @@ void fireman_set_heater2_enabled(bool en) {
 }
 
 void fireman_set_setpoint1(int setpoint_c) {
-     setpoint1_c = setpoint_c; 
-     wiseman_set_setpoint1((int16_t)setpoint_c); 
+     setpoint1_c = setpoint_c;
 }
 
 void fireman_set_setpoint2(int setpoint_c) {
-    setpoint2_c = setpoint_c; 
-    wiseman_set_setpoint2((int16_t)setpoint_c); 
+    setpoint2_c = setpoint_c;
 }
 
 void fireman_set_setpoints(int sp1_c, int sp2_c) {
-    setpoint1_c = sp1_c; setpoint2_c = sp2_c;
-    wiseman_set_setpoint1((int16_t)sp1_c);
-    wiseman_set_setpoint2((int16_t)sp2_c);
+    setpoint1_c = sp1_c; 
+    setpoint2_c = sp2_c;
 }
 
 static esp_err_t request_adc(adc_result_t *out) {

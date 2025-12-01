@@ -22,7 +22,10 @@ static int s_preheat_target = 0;
 
 static void preheat_timer_cb(TimerHandle_t xTimer) {
     // Only transition if opStat is still running (STOP not pressed during preheat)
-    start_heater = true;
+    extern uint8_t opStat;
+    if (opStat) {
+        start_heater = true;
+    }
     if (s_preheat_timer) {
         xTimerDelete(s_preheat_timer, 0);
         s_preheat_timer = NULL;
@@ -119,6 +122,12 @@ void main_page_handle_event(event_msg_t msg) {
             // Not in timer edit mode: normal start/stop logic
             opStat = !opStat;
             if (opStat) {
+                // Validate timer mode before starting anything
+                if(timekeeper_is_timekeeper_mode_set() && !timekeeper_is_timer_set()) {
+                    opStat = 0; // Reset opStat since we're not actually starting
+                    return;
+                }
+                
                 int preheat = lv_subject_get_int(&preHeat);
                 if (preheat == 0) {                   
                     start_heater = true;
@@ -143,6 +152,7 @@ void main_page_handle_event(event_msg_t msg) {
                     xTimerDelete(s_preheat_timer, 0);
                     s_preheat_timer = NULL;
                 }
+                start_heater = false;
                 timekeeper_stop();
                 fireman_set_heater1_enabled(false);
                 fireman_set_heater2_enabled(false);

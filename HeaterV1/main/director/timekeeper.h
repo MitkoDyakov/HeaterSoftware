@@ -19,5 +19,7 @@ bool timekeeper_is_done(void);
 void timekeeper_refresh();
 bool timekeeper_is_done(void); 
 void timekeeper_preheat(void);  
+bool timekeeper_is_timer_set(void);
+bool timekeeper_is_timekeeper_mode_set(void);
 
 #endif // TIMEKEEPER_H

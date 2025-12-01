@@ -72,6 +72,10 @@ static void timekeeper_edit_cb(lv_timer_t *t) {
     } else {
         visible_flag = true;
         lv_subject_set_int(&opTimeVisible, 1);
+        // Update display with current timer values
+        char text[10];
+        snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
+        lv_subject_copy_string(&opTime, text);
     }   
     blinkCounter++;
 }
@@ -166,7 +170,7 @@ void timekeeper_init()
 {
     timekeeper_main_timer = lv_timer_create(timekeeper_cb, TIMEKEEPER_PERIOD_MS, NULL);
     lv_timer_pause(timekeeper_main_timer);
-    timekeeper_edit_timer = lv_timer_create(timekeeper_edit_cb, 300, NULL);
+    timekeeper_edit_timer = lv_timer_create(timekeeper_edit_cb, 250, NULL);
     lv_timer_pause(timekeeper_edit_timer);
 
     timekeeper_running = false;
@@ -208,6 +212,16 @@ void timekeeper_start(void)
     lv_subject_copy_string(&command, "STOP");
 }
 
+bool timekeeper_is_timekeeper_mode_set(void){
+    const wiseman_settings_t* settings = wiseman_get();
+    return (settings && settings->timer_mode);
+}
+
+bool timekeeper_is_timer_set(void)
+{
+    return (target_timer_hh != 0 || target_timer_mm != 0);
+}   
+
 void timekeeper_stop(void)
 {
     lv_timer_pause(timekeeper_main_timer);
@@ -230,54 +244,39 @@ void timekeeper_stop(void)
 
 void timekeeper_increment_hour(void)
 {
-    char text[10];
     target_timer_hh++;
     if (target_timer_hh > 99)
     {
         target_timer_hh = 0;
     }
-
-    snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
-    lv_subject_copy_string(&opTime, text);
 }
 
 void timekeeper_decrement_hour(void)
 {
-    char text[10];
-
     if(target_timer_hh == 0)
     {
         target_timer_hh=99;
     }else{
         target_timer_hh--;
     }    
-    snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
-    lv_subject_copy_string(&opTime, text);
 }
 
 void timekeeper_increment_minute(void)
 {
-    char text[10];
     target_timer_mm++;
     if (target_timer_mm > 59)
     {
         target_timer_mm = 0;
     }
-
-    snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
-    lv_subject_copy_string(&opTime, text);
 }   
 void timekeeper_decrement_minute(void)
 {
-    char text[10];
     if(target_timer_mm == 0)
     {
         target_timer_mm = 59;
     }else{
         target_timer_mm--;
     } 
-    snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
-    lv_subject_copy_string(&opTime, text);
 }   
 
 void timekeeper_timer_start_edit(void)
@@ -288,7 +287,11 @@ void timekeeper_timer_start_edit(void)
 void timekeeper_timer_stop_edit(void)
 {
     lv_subject_set_int(&opTimeVisible, 1);
-    lv_timer_pause(timekeeper_edit_timer);   
+    lv_timer_pause(timekeeper_edit_timer);
+    // Update display with final timer values before exiting edit mode
+    char text[10];
+    snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
+    lv_subject_copy_string(&opTime, text);
 }
 
 bool timekeeper_is_done(void)
