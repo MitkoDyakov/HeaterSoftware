@@ -119,15 +119,14 @@ void main_page_handle_event(event_msg_t msg) {
         }
         
         if (msg.btn_id == BUTTON_RIGHT_BOTTOM) {
+            // Validate timer mode before starting anything
+            if(timekeeper_is_timekeeper_mode_set() && !timekeeper_is_timer_set()) {
+                return;
+            }
+
             // Not in timer edit mode: normal start/stop logic
             opStat = !opStat;
-            if (opStat) {
-                // Validate timer mode before starting anything
-                if(timekeeper_is_timekeeper_mode_set() && !timekeeper_is_timer_set()) {
-                    opStat = 0; // Reset opStat since we're not actually starting
-                    return;
-                }
-                
+            if (opStat) {                
                 int preheat = lv_subject_get_int(&preHeat);
                 if (preheat == 0) {                   
                     start_heater = true;
@@ -164,8 +163,8 @@ void main_page_handle_event(event_msg_t msg) {
             int t = lv_subject_get_int(&targetTemp) + 1;
             if (t < 61) {
                 lv_subject_set_int(&targetTemp, t);
-                // Live update while running
-                if (opStat) {
+                // Live update while running (skip if preheat timer active)
+                if (opStat && !s_preheat_timer) {
                     int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
                     fireman_set_setpoints(clamped, clamped);
                 }
@@ -175,8 +174,8 @@ void main_page_handle_event(event_msg_t msg) {
             int t = lv_subject_get_int(&targetTemp) - 1;
             if (t > -1) {
                 lv_subject_set_int(&targetTemp, t);
-                // Live update while running
-                if (opStat) {
+                // Live update while running (skip if preheat timer active)
+                if (opStat && !s_preheat_timer) {
                     int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
                     fireman_set_setpoints(clamped, clamped);
                 }
@@ -189,7 +188,7 @@ void main_page_handle_event(event_msg_t msg) {
                     int t = lv_subject_get_int(&targetTemp) + 1;
                     if (t < 61) {
                         lv_subject_set_int(&targetTemp, t);
-                        if (opStat) {
+                        if (opStat && !s_preheat_timer) {
                             int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
                             fireman_set_setpoints(clamped, clamped);
                         }
@@ -201,7 +200,7 @@ void main_page_handle_event(event_msg_t msg) {
                     int t = lv_subject_get_int(&targetTemp) - 1;
                     if (t > -1) {
                         lv_subject_set_int(&targetTemp, t);
-                        if (opStat) {
+                        if (opStat && !s_preheat_timer) {
                             int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
                             fireman_set_setpoints(clamped, clamped);
                         }
