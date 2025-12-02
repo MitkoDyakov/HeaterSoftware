@@ -15,12 +15,9 @@ void page_power_create(lv_obj_t *page_container, const ap33772s_caps_t *pd_caps)
     lv_subject_set_int(&fifteenV_available, pd_caps->fifteenV);
     lv_subject_set_int(&twentyV_available,  pd_caps->twentyV);
     
-    // Set active PDO based on PD availability
-    if (pd_caps->fiveV) {
-        // PD charger available - default to 5V
-        lv_subject_set_int(&activePDO, 5);
-    } else {
-        // Not a PD charger - set to 0 (no PD)
+    // Do NOT override current activePDO; it reflects live negotiated voltage.
+    // If no PD available at all, only then set to 0 once.
+    if (!pd_caps->fiveV && !pd_caps->nineV && !pd_caps->fifteenV && !pd_caps->twentyV) {
         lv_subject_set_int(&activePDO, 0);
     }
     

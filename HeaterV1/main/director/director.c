@@ -58,13 +58,29 @@ enum {
     PAGE_COUNT
 };
 
+typedef enum {
+    STATE_IDLE,              // Heaters off, no active operation
+    STATE_PREHEAT,           // Preheat phase active (55°C, timer running)
+    STATE_RUNNING            // Normal heating (user target temp, no preheat)
+} main_page_state_t;
+
+volatile main_page_state_t s_heater_state = STATE_IDLE;
+
 // ===================== GLOBAL VARIABLES =====================
 
-bool start_heater = false;
+volatile bool start_heater = false;
+volatile bool start_preheating = false;
+volatile bool stop_heater = false;
+static volatile bool preheat_done = false;
+
+static TimerHandle_t s_preheat_timer = NULL;
+
+static void preheat_timer_cb(TimerHandle_t xTimer) {
+    // Keep callback extremely light to avoid Tmr Svc overflow
+    preheat_done = (STATE_IDLE != s_heater_state);
+}
 
 esp_lcd_panel_handle_t panel_handle = NULL; // Global panel handle
-
-uint8_t opStat = 0; // 0=stopped, 1=running
 QueueHandle_t g_i2c_queue = NULL; /* Mailman I2C queue - exported for main_page.c */
 
 // ===================== STATIC VARIABLES =====================
@@ -85,6 +101,7 @@ static lv_display_t *s_lvgl_display = NULL;  // Global reference to LVGL display
 
 static void *lvBuffer1;
 static void *lvBuffer2;
+static bool s_skip_lvgl_once = false;
 
 // ===================== FORWARD DECLARATIONS =====================
 
@@ -262,7 +279,7 @@ static bool request_pd_voltage(uint8_t voltage) {
     msg.response_queue = resp;
     bool ok = false;
     if (xQueueSend(g_i2c_queue, &msg, pdMS_TO_TICKS(50)) == pdTRUE) {
-        if (xQueueReceive(resp, &ok, pdMS_TO_TICKS(200)) == pdTRUE) {
+        if (xQueueReceive(resp, &ok, pdMS_TO_TICKS(500)) == pdTRUE) {
             // Success - response received
         } else {
             ok = false; // timeout
@@ -286,10 +303,7 @@ static void director_task(void *arg)
 
     lv_obj_t * home_screen = home_create();
     lv_scr_load(home_screen);
-    
-    // Force LVGL to render the initial screen before enabling display
-    lv_timer_handler();
-    
+        
     // Now turn on the display with clean content
     ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
@@ -307,16 +321,26 @@ static void director_task(void *arg)
 
     // Initialize timekeeper AFTER LVGL/UI subjects exist (previously done before lv_init causing boot failure)
     timekeeper_init();
-    timekeeper_refresh();
+    timekeeper_refresh_gui();   
     
     // State used in button handler
     uint8_t current_page = PAGE_MAIN;
+    static TickType_t s_last_page_change = 0;
+    
+    // Initialize activePDO to 5V if available; otherwise clear to 0
+    if (g_initial_pd_caps.fiveV) {
+        lv_subject_set_int(&activePDO, 5);
+    } else {
+        lv_subject_set_int(&activePDO, 0);
+        ESP_LOGW("director.pd", "5V PDO not available at startup; activePDO=0");
+    }
     
     // start with home page
     load_page(PAGE_MAIN);
     while (1) {
         // Drain button events here (replaces vConsoleTask)
         event_msg_t msg;
+        
         while (xQueueReceive(g_button_queue, &msg, 0) == pdTRUE) {
             // Remap button ID based on display orientation
             uint8_t original_btn_id = msg.btn_id;
@@ -333,12 +357,19 @@ static void director_task(void *arg)
             }
 
             if(msg.btn_id == BUTTON_LEFT_BOTTOM) { // "LEFT_BOTTOM"
-                if (msg.event == BUTTON_EVENT_SHORT || msg.event == BUTTON_EVENT_REPEAT) {
-                    uint8_t next = (current_page + 1) % PAGE_COUNT;
-                    if (next != current_page) {
-                        unload_page(current_page);                        
-                        load_page(next);
-                        current_page = next;
+                // Page cycle only on short press and with simple debounce
+                if (msg.event == BUTTON_EVENT_SHORT) {
+                    TickType_t now = xTaskGetTickCount();
+                    if ((now - s_last_page_change) > pdMS_TO_TICKS(300)) {
+                        uint8_t next = (current_page + 1) % PAGE_COUNT;
+                        if (next != current_page) {
+                            unload_page(current_page);
+                            load_page(next);
+                            current_page = next;
+                            s_last_page_change = now;
+                        }
+                    } else {
+                        ESP_LOGD("director.page", "Debounced page change");
                     }
                 }
             }else{
@@ -382,21 +413,82 @@ static void director_task(void *arg)
             }
         }
 
-        lv_timer_handler();
-        
         // Check tilt pin and update display orientation if needed
         orientation_check_and_update();
-        
-        // check if we need to start the heater
 
-        if(start_heater)
-        {
-            uint8_t desired = 0;
-            if (g_initial_pd_caps.twentyV) desired = 20; 
-            else if (g_initial_pd_caps.fifteenV) desired = 15; 
-            else desired = 0;
-            request_pd_voltage(desired);
-            lv_subject_set_int(&activePDO, desired);
+        // check if we need to start/stop the heater
+        if(start_preheating) {            
+            ESP_LOGI("director.preheat", "Starting preheat sequence");
+            // Preheat phase: set to preheat temp, start one-shot timer                    
+            if (s_preheat_timer) {
+                xTimerDelete(s_preheat_timer, 0);
+                s_preheat_timer = NULL;
+            }
+            int preheat = lv_subject_get_int(&preHeat);
+            ESP_LOGI("director.preheat", "Creating one-shot preheat timer for %d minutes", preheat);
+            s_preheat_timer = xTimerCreate("preheat", preheat * 60 * 1000 / portTICK_PERIOD_MS, pdFALSE, NULL, preheat_timer_cb);
+            if (s_preheat_timer) {
+                ESP_LOGI("director.preheat", "Starting preheat timer");
+                xTimerStart(s_preheat_timer, 0);
+            } else {
+                ESP_LOGE("director.preheat", "Failed to create preheat timer");
+            }
+
+            // Ensure PD voltage is sufficient for preheat: try 20V, then 15V, then 9V
+            bool pd_ok = false;
+            uint8_t applied = 0;
+            if (g_initial_pd_caps.twentyV) {
+                pd_ok = request_pd_voltage(20);
+                if (pd_ok) { applied = 20; lv_subject_set_int(&activePDO, 20); }
+            }
+            if (!pd_ok && g_initial_pd_caps.fifteenV) {
+                pd_ok = request_pd_voltage(15);
+                if (pd_ok) { applied = 15; lv_subject_set_int(&activePDO, 15); }
+            }
+
+            ESP_LOGI("main_page.pd", "Preheat PD request result ok=%d, applied=%u (caps: 20=%d,15=%d,9=%d)", (int)pd_ok, applied, (int)g_initial_pd_caps.twentyV, (int)g_initial_pd_caps.fifteenV, (int)g_initial_pd_caps.nineV);
+            // If no PD change succeeded, keep current PDO (likely 5V)
+            ESP_LOGI("director.preheat", "Setting fireman setpoints to 55/55 and enabling heaters");
+            fireman_set_setpoints(55, 55);
+            fireman_set_heater1_enabled(true);
+            fireman_set_heater2_enabled(true);
+            ESP_LOGI("director.preheat", "Calling timekeeper_preheat()");
+            timekeeper_preheat();
+
+            ESP_LOGI("director.preheat", "Preheat state entered");
+            s_heater_state = STATE_PREHEAT;
+            start_preheating = false;
+            preheat_done = false;
+        }
+
+        // Handle preheat completion in task context
+        if (preheat_done) {
+            ESP_LOGI("director.preheat", "Preheat done; transitioning to RUNNING");
+            // Clean up timer safely here
+            if (s_preheat_timer) {
+                xTimerDelete(s_preheat_timer, 0);
+                s_preheat_timer = NULL;
+            }
+            start_heater = true;
+            preheat_done = false;
+            // Skip one LVGL handler cycle to avoid redraw storm
+            s_skip_lvgl_once = true;
+        }
+
+        if(start_heater) {            
+            // Robust PD selection: try 20V, else 15V, else 9V; only update UI on success
+            bool pd_ok = false;
+            uint8_t applied = 0;
+            if (g_initial_pd_caps.twentyV) {
+                pd_ok = request_pd_voltage(20);
+                if (pd_ok) { applied = 20; lv_subject_set_int(&activePDO, 20); }
+            }
+            if (!pd_ok && g_initial_pd_caps.fifteenV) {
+                pd_ok = request_pd_voltage(15);
+                if (pd_ok) { applied = 15; lv_subject_set_int(&activePDO, 15); }
+            }
+
+            ESP_LOGI("director.pd", "Start heater: PD switch result ok=%d, applied=%u (caps: 20=%d,15=%d,9=%d)", (int)pd_ok, applied, (int)g_initial_pd_caps.twentyV, (int)g_initial_pd_caps.fifteenV, (int)g_initial_pd_caps.nineV);
 
             int target = lv_subject_get_int(&targetTemp);
             if (target < 0) target = 0;
@@ -408,18 +500,30 @@ static void director_task(void *arg)
             fireman_set_heater1_enabled(true);
             fireman_set_heater2_enabled(true);
             timekeeper_start();
+
+            s_heater_state = STATE_RUNNING;
             start_heater = false;
         }
 
-        // Check if timer finished (safe context, no ISR)
-        if (timekeeper_is_done()) {
-            opStat = false;
+        if (stop_heater) {            
+            if (s_preheat_timer) {
+                xTimerDelete(s_preheat_timer, 0);
+                s_preheat_timer = NULL;
+            }
             fireman_set_heater1_enabled(false);
             fireman_set_heater2_enabled(false);
             // Revert PD voltage to 5V
             bool ok = request_pd_voltage(5);
-            ESP_LOGI("director.timer", "Timer elapsed - heaters disabled, PD reverted to 5V (result=%d)", (int)ok);
             if (ok) lv_subject_set_int(&activePDO, 5);
+            timekeeper_stop();
+            s_heater_state = STATE_IDLE;
+            stop_heater = false; // prevent repeated execution
+            ESP_LOGI("director.pd", "Stop heater: PD revert to 5V result ok=%d", (int)ok);
+            // Log memory status and skip one LVGL cycle to prevent rasterization surge
+            lv_mem_monitor_t mon;
+            lv_mem_monitor(&mon);
+            ESP_LOGI("director.mem", "LVGL mem: free=%lu used=%lu frag=%u%%", (unsigned long)mon.free_size, (unsigned long)mon.total_size - (unsigned long)mon.free_size, (unsigned)mon.frag_pct);
+            s_skip_lvgl_once = true;
         }
         
         // Update runtime display approximately once per loop (10ms delay below) but only when minute count changes.
@@ -431,6 +535,13 @@ static void director_task(void *arg)
             // UI expects hours (integer). Convert minutes -> hours (truncate)
             uint32_t hours = cur_min / 60u;
             lv_subject_set_int(&runTime, (int)hours);
+        }
+
+        // Process LVGL after state updates; optionally skip one cycle to avoid redraw storms
+        if (s_skip_lvgl_once) {
+            s_skip_lvgl_once = false;
+        } else {
+            lv_timer_handler();
         }
 
         // Slightly longer delay to ensure IDLE gets time (watchdog feed)

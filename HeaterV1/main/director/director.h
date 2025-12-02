@@ -23,4 +23,10 @@
 
 bool director_init(QueueHandle_t button_event_queue, QueueHandle_t temperature_queue, QueueHandle_t i2c_queue, const ap33772s_caps_t *initial_pd_caps);
 
+typedef enum {
+    STATE_IDLE,              // Heaters off, no active operation
+    STATE_PREHEAT,           // Preheat phase active (55°C, timer running)
+    STATE_RUNNING            // Normal heating (user target temp, no preheat)
+} main_page_state_t;
+
 #endif // DIRECTOR_H

@@ -5,7 +5,6 @@
 #include "esp_log.h"
 #include "pinout.h"
 #include "switchboard/switchboard.h" // for button definitions
-#include "wiseman/wiseman.h"
 
 // ---------------- Display Tilt Detection ----------------
 static lv_display_t *s_lvgl_display = NULL;         // LVGL display reference
@@ -14,7 +13,7 @@ static bool s_display_flipped = false;               // Current orientation stat
 static TickType_t s_last_tilt_change = 0;           // Debounce timing
 static bool s_last_tilt_state = false;              // Last stable tilt pin state
 
-#define TILT_DEBOUNCE_MS 500  // Debounce time in milliseconds
+#define TILT_DEBOUNCE_MS 50  // Debounce time in milliseconds
 
 static void display_set_orientation(bool flipped) {
     if (!s_panel_handle || !s_lvgl_display) return;
@@ -66,40 +65,25 @@ void orientation_init(lv_display_t *display, esp_lcd_panel_handle_t panel) {
 void orientation_check_and_update(void) {
     if (!s_lvgl_display) return;
     
-    // Get current FLIP setting from wiseman
-    const wiseman_settings_t* settings = wiseman_get();
-    if (!settings) return;
+    bool current_state = gpio_get_level(DISPLAY_TILT);
+    TickType_t now = xTaskGetTickCount();
     
-    bool should_flip = false;
-    
-    if (settings->screen_orientation == WISEMAN_ORIENTATION_ROTATED) {
-        // Forced ON: always rotated
-        should_flip = true;
-    } else if (settings->screen_orientation == WISEMAN_ORIENTATION_AUTO) {
-        // AUTO: use tilt sensor
-        bool current_state = gpio_get_level(DISPLAY_TILT);
-        TickType_t now = xTaskGetTickCount();
-        
-        // Check if state changed
-        if (current_state != s_last_tilt_state) {
-            s_last_tilt_change = now;
-            s_last_tilt_state = current_state;
-            return; // Wait for debounce
-        }
-        
-        // Check if debounce time has passed
-        TickType_t elapsed = now - s_last_tilt_change;
-        if (elapsed < pdMS_TO_TICKS(TILT_DEBOUNCE_MS)) {
-            return; // Still in debounce period
-        }
-        
-        // Invert logic: LOW (ground) = flipped orientation, HIGH (pull-up) = normal
-        should_flip = !current_state;
+    // Check if state changed
+    if (current_state != s_last_tilt_state) {
+        s_last_tilt_change = now;
+        s_last_tilt_state = current_state;
+        return; // Wait for debounce
     }
-    // else: WISEMAN_ORIENTATION_DEFAULT -> should_flip remains false
     
-    // Apply orientation if changed
-    display_set_orientation(should_flip);
+    // Check if debounce time has passed
+    TickType_t elapsed = now - s_last_tilt_change;
+    if (elapsed < pdMS_TO_TICKS(TILT_DEBOUNCE_MS)) {
+        return; // Still in debounce period
+    }
+    
+    // State is stable, update display orientation
+    // Invert logic: LOW (ground) = flipped orientation, HIGH (pull-up) = normal
+    display_set_orientation(!current_state);
 }
 
 uint8_t orientation_remap_button(uint8_t original_btn_id) {

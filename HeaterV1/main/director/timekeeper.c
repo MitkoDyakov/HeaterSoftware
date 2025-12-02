@@ -7,8 +7,14 @@
 #include "string.h"
 #include "timekeeper.h"
 #include "wiseman/wiseman.h"
+#include "director/director.h"
 
 #define TIMEKEEPER_PERIOD_MS 1000
+
+extern main_page_state_t s_heater_state;
+extern volatile bool start_heater;
+extern volatile bool start_preheating;
+extern volatile bool stop_heater;
 
 enum {
     STOPWATCH = 0,
@@ -33,12 +39,15 @@ void (*callback_function)(void) = NULL;
 
 bool visible_flag = false;
 uint8_t blinkCounter = 0;
-static bool timekeeper_finished = true;  // Flag to signal timer completion to main loop
 
-void timekeeper_refresh()
+void timekeeper_refresh_gui()
 {
     if (!timekeeper_running)
     {
+        // Do not overwrite when showing a message like PREHEATING...
+        if (timekeeper_mode == MESSAGE) {
+            return;
+        }
         const wiseman_settings_t* settings = wiseman_get();
         if (settings && settings->timer_mode) {
             timekeeper_mode = TIMER;
@@ -82,6 +91,10 @@ static void timekeeper_edit_cb(lv_timer_t *t) {
 
 static void timekeeper_cb(lv_timer_t *t) {
     (void)t;
+    // Do not update time while showing a message like PREHEATING...
+    if (timekeeper_mode == MESSAGE) {
+        return;
+    }
     // update counters
     char text[10];
     timer_ss++;
@@ -108,7 +121,8 @@ static void timekeeper_cb(lv_timer_t *t) {
         }
 
         if (timer_hh == 99 && timer_mm == 59) {
-            timekeeper_stop();
+            stop_heater = true;
+            lv_timer_pause(timekeeper_main_timer);
         }
     }
 
@@ -140,7 +154,8 @@ static void timekeeper_cb(lv_timer_t *t) {
         }
 
         if (remaining_seconds == 0u) {
-            timekeeper_stop();
+            stop_heater = true;
+            lv_timer_pause(timekeeper_main_timer);
             return;
         }
     }
@@ -150,20 +165,16 @@ static void timekeeper_cb(lv_timer_t *t) {
 
 void timekeeper_preheat()
 {
+    timekeeper_mode = MESSAGE;
+    // Keep timers paused during preheat
+    if (timekeeper_main_timer) {
+        lv_timer_pause(timekeeper_main_timer);
+    }
+    timekeeper_running = false;
+    // Show preheating message
     lv_subject_copy_string(&command, "");
     lv_subject_copy_string(&opTime, "PREHEATING...");
-    timekeeper_finished = false;
-}
-
-void timekeeper_refresh_gui()
-{
-    // Reset internal counters
-    timer_ss = 0;
-    timer_mm = 0;
-    timer_hh = 0;
-    // Ensure command shows START and opTime shows 00:00
-    lv_subject_copy_string(&command, "START");
-    lv_subject_copy_string(&opTime, "00:00");
+    lv_subject_set_int(&opTimeVisible, 1);
 }
 
 void timekeeper_init()
@@ -181,8 +192,6 @@ void timekeeper_init()
     target_timer_mm = 0;
     target_timer_hh = 0;
 
-    timekeeper_finished = true;
-
     // Check wiseman settings: if timer_mode is enabled, initialize as timer; otherwise stopwatch
     const wiseman_settings_t* settings = wiseman_get();
     if (settings && settings->timer_mode) {
@@ -194,32 +203,26 @@ void timekeeper_init()
 
 void timekeeper_start(void)
 {
-    // Check wiseman settings to determine mode
+    // Switch out of message mode into the configured operation mode
     const wiseman_settings_t* settings = wiseman_get();
-    timekeeper_mode = (settings && settings->timer_mode) ? TIMER : STOPWATCH;
-    
-    if (timekeeper_mode == TIMER) 
-    {
-        if( target_timer_hh == 0 && target_timer_mm == 0)
-        {
-            return;
-        }   
+    if (settings && settings->timer_mode) {
+        timekeeper_mode = TIMER;
+    } else {
+        timekeeper_mode = STOPWATCH;
     }
-
-    timekeeper_finished = false;  // Reset completion flag when starting
     lv_timer_resume(timekeeper_main_timer);
-    timekeeper_running = true;
     lv_subject_copy_string(&command, "STOP");
+    timekeeper_running = true;
 }
 
-bool timekeeper_is_timekeeper_mode_set(void){
-    const wiseman_settings_t* settings = wiseman_get();
-    return (settings && settings->timer_mode);
-}
-
-bool timekeeper_is_timer_set(void)
+bool timekeeper_is_timer_valid(void)
 {
-    return (target_timer_hh != 0 || target_timer_mm != 0);
+    const wiseman_settings_t* settings = wiseman_get();
+    bool timer_mode_enabled = (settings && settings->timer_mode);
+    bool timer_has_value = (target_timer_hh != 0 || target_timer_mm != 0);
+    
+    // Timer is valid if: mode disabled (stopwatch) OR (mode enabled AND value set)
+    return !timer_mode_enabled || timer_has_value;
 }   
 
 void timekeeper_stop(void)
@@ -229,17 +232,18 @@ void timekeeper_stop(void)
     timer_ss = 0;
     timer_mm = 0;
     timer_hh = 0;
-    lv_subject_copy_string(&command, "START");
     
-    char text[10];
-    if (timekeeper_mode == TIMER) {
-        snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
-    } else {
-        snprintf(text, sizeof(text), "00:00");
+    // Exit MESSAGE mode so refresh can restore UI
+    if (timekeeper_mode == MESSAGE) {
+        const wiseman_settings_t* settings = wiseman_get();
+        if (settings && settings->timer_mode) {
+            timekeeper_mode = TIMER;
+        } else {
+            timekeeper_mode = STOPWATCH;
+        }
     }
-    lv_subject_copy_string(&opTime, text);
-
-    timekeeper_finished = true;  // Reset completion flag
+    
+    timekeeper_refresh_gui();
 }
 
 void timekeeper_increment_hour(void)
@@ -293,8 +297,3 @@ void timekeeper_timer_stop_edit(void)
     snprintf(text, sizeof(text), "%02u:%02u", target_timer_hh, target_timer_mm);
     lv_subject_copy_string(&opTime, text);
 }
-
-bool timekeeper_is_done(void)
-{
-    return timekeeper_finished;
-}   

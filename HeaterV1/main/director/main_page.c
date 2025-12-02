@@ -7,36 +7,21 @@
 #include "esp_log.h"
 #include <string.h>
 #include "pinout.h"
-
+#include "director/director.h"
 // External global variables from director.c
-extern uint8_t opStat; // 0=stopped, 1=running
 extern QueueHandle_t g_i2c_queue;
-extern bool start_heater;
 // Timer edit mode state
+
+extern volatile main_page_state_t s_heater_state;
+extern volatile bool start_heater;
+extern volatile bool start_preheating;
+extern volatile bool stop_heater;
+
 static bool s_timer_edit_mode = false;
-
-// Preheat timer handle
-#include "freertos/timers.h"
-static TimerHandle_t s_preheat_timer = NULL;
-static int s_preheat_target = 0;
-
-static void preheat_timer_cb(TimerHandle_t xTimer) {
-    // Only transition if opStat is still running (STOP not pressed during preheat)
-    extern uint8_t opStat;
-    if (opStat) {
-        start_heater = true;
-    }
-    if (s_preheat_timer) {
-        xTimerDelete(s_preheat_timer, 0);
-        s_preheat_timer = NULL;
-    }
-}
-
 // Cached PD capabilities from director init
 static ap33772s_caps_t s_pd_caps = {0};
 
 // Forward declaration for helper function
-static bool request_pd_voltage(uint8_t voltage);
 
 void page_main_create(lv_obj_t *container, const ap33772s_caps_t *initial_pd_caps) {
     if (initial_pd_caps) {
@@ -63,29 +48,6 @@ void page_main_create(lv_obj_t *container, const ap33772s_caps_t *initial_pd_cap
 void page_main_cleanup(void) {
     // Reset timer edit mode when leaving page
     s_timer_edit_mode = false;
-}
-
-/* Helper: request PD voltage change through mailman */
-static bool request_pd_voltage(uint8_t voltage) {
-    if (!g_i2c_queue || (voltage != 5 && voltage != 9 && voltage != 15 && voltage != 20)) {
-        return false;
-    }
-    i2c_msg_t msg = {0};
-    msg.type = I2C_MSG_PD_SET_PDO;
-    msg.data.pd_set.set_voltage = voltage;
-    QueueHandle_t resp = xQueueCreate(1, sizeof(bool));
-    if (!resp) return false;
-    msg.response_queue = resp;
-    bool ok = false;
-    if (xQueueSend(g_i2c_queue, &msg, pdMS_TO_TICKS(50)) == pdTRUE) {
-        if (xQueueReceive(resp, &ok, pdMS_TO_TICKS(200)) == pdTRUE) {
-            // Success - response received
-        } else {
-            ok = false; // timeout
-        }
-    }
-    vQueueDelete(resp);
-    return ok;
 }
 
 void main_page_handle_event(event_msg_t msg) {
@@ -119,44 +81,32 @@ void main_page_handle_event(event_msg_t msg) {
         }
         
         if (msg.btn_id == BUTTON_RIGHT_BOTTOM) {
-            // Validate timer mode before starting anything
-            if(timekeeper_is_timekeeper_mode_set() && !timekeeper_is_timer_set()) {
-                return;
-            }
-
             // Not in timer edit mode: normal start/stop logic
-            opStat = !opStat;
-            if (opStat) {                
-                int preheat = lv_subject_get_int(&preHeat);
-                if (preheat == 0) {                   
-                    start_heater = true;
-                } else {
-                   // Preheat phase: set to preheat temp, start one-shot timer                    
-                    if (s_preheat_timer) {
-                        xTimerDelete(s_preheat_timer, 0);
-                        s_preheat_timer = NULL;
+            switch(s_heater_state) {
+                case STATE_IDLE:
+                    // Validate timer mode before starting
+                    if (timekeeper_is_timer_valid() == false) {
+                        ESP_LOGI("main_page.timer", "Timer mode enabled but no time set; ignoring start request");
+                        return;
                     }
-                    s_preheat_timer = xTimerCreate("preheat", preheat * 60 * 1000 / portTICK_PERIOD_MS, pdFALSE, NULL, preheat_timer_cb);
-                    if (s_preheat_timer) {
-                        xTimerStart(s_preheat_timer, 0);
+                    int preheat = lv_subject_get_int(&preHeat);
+                    ESP_LOGI("main_page.preheat", "START pressed: preHeat=%d", preheat);
+                    if (preheat > 0) {
+                        ESP_LOGI("main_page.preheat", "Starting preheat for %d minutes", preheat);
+                        start_preheating = true;
+                    } else {
+                        ESP_LOGI("main_page.preheat", "No preheat configured; starting heater immediately");
+                        start_heater = true;
                     }
-                    fireman_set_setpoints(55, 55);
-                    fireman_set_heater1_enabled(true);
-                    fireman_set_heater2_enabled(true);
-                    timekeeper_preheat();
-                }
-            } else {
-                // STOP pressed: always cancel preheat if active, stop everything
-                if (s_preheat_timer) {
-                    xTimerDelete(s_preheat_timer, 0);
-                    s_preheat_timer = NULL;
-                }
-                start_heater = false;
-                timekeeper_stop();
-                fireman_set_heater1_enabled(false);
-                fireman_set_heater2_enabled(false);
-                request_pd_voltage(5);
-                lv_subject_set_int(&activePDO, 5);
+                    break;
+                case STATE_PREHEAT:
+                    ESP_LOGI("main_page.preheat", "STOP pressed during preheat");
+                    stop_heater = true;
+                    break;
+                case STATE_RUNNING:
+                    ESP_LOGI("main_page.preheat", "STOP pressed during running");
+                    stop_heater = true;
+                    break;
             }
         } else if (msg.btn_id == BUTTON_RIGHT_TOP) {
             // INCREMENT temperature (short press)
@@ -164,7 +114,7 @@ void main_page_handle_event(event_msg_t msg) {
             if (t < 61) {
                 lv_subject_set_int(&targetTemp, t);
                 // Live update while running (skip if preheat timer active)
-                if (opStat && !s_preheat_timer) {
+                if (s_heater_state == STATE_RUNNING) {
                     int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
                     fireman_set_setpoints(clamped, clamped);
                 }
@@ -175,7 +125,7 @@ void main_page_handle_event(event_msg_t msg) {
             if (t > -1) {
                 lv_subject_set_int(&targetTemp, t);
                 // Live update while running (skip if preheat timer active)
-                if (opStat && !s_preheat_timer) {
+                if (s_heater_state == STATE_RUNNING) {
                     int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
                     fireman_set_setpoints(clamped, clamped);
                 }
@@ -188,7 +138,7 @@ void main_page_handle_event(event_msg_t msg) {
                     int t = lv_subject_get_int(&targetTemp) + 1;
                     if (t < 61) {
                         lv_subject_set_int(&targetTemp, t);
-                        if (opStat && !s_preheat_timer) {
+                        if (s_heater_state == STATE_RUNNING) {
                             int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
                             fireman_set_setpoints(clamped, clamped);
                         }
@@ -200,7 +150,7 @@ void main_page_handle_event(event_msg_t msg) {
                     int t = lv_subject_get_int(&targetTemp) - 1;
                     if (t > -1) {
                         lv_subject_set_int(&targetTemp, t);
-                        if (opStat && !s_preheat_timer) {
+                        if (s_heater_state == STATE_RUNNING) {
                             int clamped = t; if (clamped < 0) clamped = 0; else if (clamped > 60) clamped = 60;
                             fireman_set_setpoints(clamped, clamped);
                         }
@@ -210,7 +160,8 @@ void main_page_handle_event(event_msg_t msg) {
             case BUTTON_RIGHT_BOTTOM: { // "RIGHT_BOTTOM" (long hold to enter timer edit)
                 static uint8_t count = 0;
                 if(count == 3){ // after 3 repeats (~3s)
-                    if (timer_mode_enabled && !s_timer_edit_mode) {
+                    // Allow entering edit mode only when IDLE
+                    if (s_heater_state == STATE_IDLE && timer_mode_enabled && !s_timer_edit_mode) {
                         timekeeper_timer_start_edit();
                         s_timer_edit_mode = true;
                         ESP_LOGI("main_page.timer", "Entered timer edit mode");

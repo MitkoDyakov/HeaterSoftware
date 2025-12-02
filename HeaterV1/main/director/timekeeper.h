@@ -15,11 +15,7 @@ void timekeeper_decrement_minute(void);
 void timekeeper_increment_minute(void);
 void timekeeper_decrement_hour(void);
 void timekeeper_increment_hour(void);
-bool timekeeper_is_done(void);
-void timekeeper_refresh();
-bool timekeeper_is_done(void); 
 void timekeeper_preheat(void);  
-bool timekeeper_is_timer_set(void);
-bool timekeeper_is_timekeeper_mode_set(void);
+bool timekeeper_is_timer_valid(void);
 
 #endif // TIMEKEEPER_H

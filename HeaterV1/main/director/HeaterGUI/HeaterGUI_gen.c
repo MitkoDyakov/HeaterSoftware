@@ -240,7 +240,7 @@ void HeaterGUI_init_gen(const char * asset_path)
                           );
     lv_subject_init_int(&brightness, 75);
     lv_subject_init_int(&sleepTimer, 30);
-    lv_subject_init_int(&preHeat, 15);
+    lv_subject_init_int(&preHeat, 0);
     static char soundEnable_buf[UI_SUBJECT_STRING_LENGTH];
     static char soundEnable_prev_buf[UI_SUBJECT_STRING_LENGTH];
     lv_subject_init_string(&soundEnable,

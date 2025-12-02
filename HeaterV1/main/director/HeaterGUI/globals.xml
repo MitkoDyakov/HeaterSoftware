@@ -55,7 +55,7 @@
         <string name="activeCh" value="CH1/2"/>
         <int name="brightness" value="75"/>
         <int name="sleepTimer" value="30"/>
-        <int name="preHeat" value="15"/>
+        <int name="preHeat" value="0"/>
         <string name="soundEnable" value="ON"/>
 
         <!--  Info page -->
