@@ -47,7 +47,7 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
         lv_style_set_pad_all(&main, 0);
         lv_style_set_margin_all(&main, 0);
         lv_style_set_border_width(&main, 0);
-        lv_style_set_text_font(&main, CONTROL_FONT);
+        lv_style_set_text_font(&main, CONTROL_FONT_C);
 
         lv_style_init(&invisible);
         lv_style_set_opa(&invisible, 0);
@@ -66,6 +66,7 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
     lv_obj_t * lv_label_0 = lv_label_create(lv_obj_0);
     lv_obj_set_style_text_align(lv_label_0, LV_TEXT_ALIGN_CENTER, 0);
     lv_label_bind_text(lv_label_0, command, NULL);lv_obj_set_x(lv_label_0, 70);
+    lv_obj_set_y(lv_label_0, 2);
     lv_obj_set_width(lv_label_0, 65);
     lv_obj_set_height(lv_label_0, 40);
 
@@ -73,7 +74,7 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
     lv_obj_t * lv_label_1 = lv_label_create(lv_obj_0);
     lv_obj_set_style_text_align(lv_label_1, LV_TEXT_ALIGN_LEFT, 0);
     lv_label_bind_text(lv_label_1, time, NULL);lv_obj_set_x(lv_label_1, 7);
-    lv_obj_set_y(lv_label_1, 0);
+    lv_obj_set_y(lv_label_1, 2);
     lv_obj_set_width(lv_label_1, 134);
     lv_obj_set_height(lv_label_1, 40);
     lv_obj_add_style(lv_label_1, &invisible, LV_STATE_CHECKED);

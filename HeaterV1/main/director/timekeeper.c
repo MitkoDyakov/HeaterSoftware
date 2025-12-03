@@ -173,7 +173,7 @@ void timekeeper_preheat()
     timekeeper_running = false;
     // Show preheating message
     lv_subject_copy_string(&command, "");
-    lv_subject_copy_string(&opTime, "PREHEATING...");
+    lv_subject_copy_string(&opTime, "PREHEATING");
     lv_subject_set_int(&opTimeVisible, 1);
 }
 

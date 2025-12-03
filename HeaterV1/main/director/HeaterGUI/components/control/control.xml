@@ -9,14 +9,14 @@
     </previews>
 
     <styles>
-        <style name="main" width="141" height="39"  pad_all="0" margin_all="0" border_width="0" text_font="CONTROL_FONT"/>
+        <style name="main" width="141" height="39"  pad_all="0" margin_all="0" border_width="0" text_font="CONTROL_FONT_C"/>
         <style name="invisible" opa="0" />
     </styles>
     
     <view scrollable="false">
         <style name="main" />
         <lv_image src="start_bg"></lv_image>
-        <lv_label style_text_align="center" bind_text="$command" x="70"  width="65" height="40"></lv_label>
+        <lv_label style_text_align="center" bind_text="$command" x="70" y="0" width="65" height="40"></lv_label>
         <lv_label style_text_align="left" bind_text="$time" x="7" y="0" width="134" height="40">
             <style name="invisible" selector="checked"/>
             <bind_state_if_eq state="checked" subject="opTimeVisible" ref_value="0"/>

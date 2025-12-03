@@ -10,6 +10,6 @@
 #define BIG_DIGITS &big_digit_font
 #define MIDDLE_DIGITS &middle_digit_font
 #define SMALL_DIGITS &small_digit_font
-#define CONTROL_FONT &control_font
+#define CONTROL_FONT_C &control_font
 
 #endif /* LV_CONF_H */
