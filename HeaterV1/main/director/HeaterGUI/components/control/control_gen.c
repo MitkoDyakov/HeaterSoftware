@@ -47,7 +47,7 @@ lv_obj_t * control_create(lv_obj_t * parent, lv_subject_t * command, lv_subject_
         lv_style_set_pad_all(&main, 0);
         lv_style_set_margin_all(&main, 0);
         lv_style_set_border_width(&main, 0);
-        lv_style_set_text_font(&main, font_start_card);
+        lv_style_set_text_font(&main, CONTROL_FONT);
 
         lv_style_init(&invisible);
         lv_style_set_opa(&invisible, 0);

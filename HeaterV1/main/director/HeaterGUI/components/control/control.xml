@@ -9,7 +9,7 @@
     </previews>
 
     <styles>
-        <style name="main" width="141" height="39"  pad_all="0" margin_all="0" border_width="0" text_font="font_start_card"/>
+        <style name="main" width="141" height="39"  pad_all="0" margin_all="0" border_width="0" text_font="CONTROL_FONT"/>
         <style name="invisible" opa="0" />
     </styles>
     
