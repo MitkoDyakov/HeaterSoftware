@@ -76,6 +76,7 @@ extern lv_font_t * font_target_temp;
 extern lv_font_t big_digit_font;
 extern lv_font_t middle_digit_font;
 extern lv_font_t small_digit_font;
+extern lv_font_t control_font;
 
 /*----------------
  * Images
