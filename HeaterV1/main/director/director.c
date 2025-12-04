@@ -101,7 +101,6 @@ static lv_display_t *s_lvgl_display = NULL;  // Global reference to LVGL display
 
 static void *lvBuffer1;
 static void *lvBuffer2;
-static bool s_skip_lvgl_once = false;
 
 // ===================== FORWARD DECLARATIONS =====================
 
@@ -111,7 +110,7 @@ static void load_page(uint8_t page_id);
 static void unload_page(uint8_t page_id);
 static void lv_tick_cb(void* arg);
 // static void ui_clock_cb(lv_timer_t *t);
-static bool request_pd_voltage(uint8_t voltage);
+static void request_pd_voltage(uint8_t voltage);
 static void director_task(void *arg);
 
 void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map);
@@ -267,26 +266,15 @@ void lvgl_init_display(void)
 }
 
 /* Helper: request PD voltage change through mailman */
-static bool request_pd_voltage(uint8_t voltage) {
+static void request_pd_voltage(uint8_t voltage) {
     if (!g_i2c_queue || (voltage != 5 && voltage != 9 && voltage != 15 && voltage != 20)) {
-        return false;
+        return;
     }
     i2c_msg_t msg = {0};
     msg.type = I2C_MSG_PD_SET_PDO;
     msg.data.pd_set.set_voltage = voltage;
-    QueueHandle_t resp = xQueueCreate(1, sizeof(bool));
-    if (!resp) return false;
-    msg.response_queue = resp;
-    bool ok = false;
-    if (xQueueSend(g_i2c_queue, &msg, pdMS_TO_TICKS(50)) == pdTRUE) {
-        if (xQueueReceive(resp, &ok, pdMS_TO_TICKS(500)) == pdTRUE) {
-            // Success - response received
-        } else {
-            ok = false; // timeout
-        }
-    }
-    vQueueDelete(resp);
-    return ok;
+    msg.response_queue = NULL;
+    xQueueSend(g_i2c_queue, &msg, pdMS_TO_TICKS(50));
 }
 
 static void director_task(void *arg)
@@ -340,7 +328,8 @@ static void director_task(void *arg)
     while (1) {
         // Drain button events here (replaces vConsoleTask)
         event_msg_t msg;
-        
+
+        // Handle all pending button events
         while (xQueueReceive(g_button_queue, &msg, 0) == pdTRUE) {
             // Remap button ID based on display orientation
             uint8_t original_btn_id = msg.btn_id;
@@ -435,18 +424,18 @@ static void director_task(void *arg)
             }
 
             // Ensure PD voltage is sufficient for preheat: try 20V, then 15V, then 9V
-            bool pd_ok = false;
             uint8_t applied = 0;
             if (g_initial_pd_caps.twentyV) {
-                pd_ok = request_pd_voltage(20);
-                if (pd_ok) { applied = 20; lv_subject_set_int(&activePDO, 20); }
-            }
-            if (!pd_ok && g_initial_pd_caps.fifteenV) {
-                pd_ok = request_pd_voltage(15);
-                if (pd_ok) { applied = 15; lv_subject_set_int(&activePDO, 15); }
+                request_pd_voltage(20);
+                applied = 20; 
+                lv_subject_set_int(&activePDO, 20);
+            }else if(g_initial_pd_caps.fifteenV){
+                request_pd_voltage(15);
+                applied = 15; 
+                lv_subject_set_int(&activePDO, 15);
             }
 
-            ESP_LOGI("main_page.pd", "Preheat PD request result ok=%d, applied=%u (caps: 20=%d,15=%d,9=%d)", (int)pd_ok, applied, (int)g_initial_pd_caps.twentyV, (int)g_initial_pd_caps.fifteenV, (int)g_initial_pd_caps.nineV);
+            ESP_LOGI("main_page.pd", "Preheat PD request result applied=%u (caps: 20=%d,15=%d,9=%d)", applied, (int)g_initial_pd_caps.twentyV, (int)g_initial_pd_caps.fifteenV, (int)g_initial_pd_caps.nineV);
             // If no PD change succeeded, keep current PDO (likely 5V)
             ESP_LOGI("director.preheat", "Setting fireman setpoints to 55/55 and enabling heaters");
             fireman_set_setpoints(55, 55);
@@ -471,24 +460,22 @@ static void director_task(void *arg)
             }
             start_heater = true;
             preheat_done = false;
-            // Skip one LVGL handler cycle to avoid redraw storm
-            s_skip_lvgl_once = true;
         }
 
         if(start_heater) {            
             // Robust PD selection: try 20V, else 15V, else 9V; only update UI on success
-            bool pd_ok = false;
             uint8_t applied = 0;
             if (g_initial_pd_caps.twentyV) {
-                pd_ok = request_pd_voltage(20);
-                if (pd_ok) { applied = 20; lv_subject_set_int(&activePDO, 20); }
-            }
-            if (!pd_ok && g_initial_pd_caps.fifteenV) {
-                pd_ok = request_pd_voltage(15);
-                if (pd_ok) { applied = 15; lv_subject_set_int(&activePDO, 15); }
+                request_pd_voltage(20);
+                applied = 20; 
+                lv_subject_set_int(&activePDO, 20);
+            }else if(g_initial_pd_caps.fifteenV){
+                request_pd_voltage(15);
+                applied = 15; 
+                lv_subject_set_int(&activePDO, 15);
             }
 
-            ESP_LOGI("director.pd", "Start heater: PD switch result ok=%d, applied=%u (caps: 20=%d,15=%d,9=%d)", (int)pd_ok, applied, (int)g_initial_pd_caps.twentyV, (int)g_initial_pd_caps.fifteenV, (int)g_initial_pd_caps.nineV);
+            ESP_LOGI("director.pd", "Start heater: PD switch result, applied=%u (caps: 20=%d,15=%d,9=%d)", applied, (int)g_initial_pd_caps.twentyV, (int)g_initial_pd_caps.fifteenV, (int)g_initial_pd_caps.nineV);
 
             int target = lv_subject_get_int(&targetTemp);
             if (target < 0) target = 0;
@@ -513,17 +500,16 @@ static void director_task(void *arg)
             fireman_set_heater1_enabled(false);
             fireman_set_heater2_enabled(false);
             // Revert PD voltage to 5V
-            bool ok = request_pd_voltage(5);
-            if (ok) lv_subject_set_int(&activePDO, 5);
+            request_pd_voltage(5);
+            lv_subject_set_int(&activePDO, 5);
             timekeeper_stop();
             s_heater_state = STATE_IDLE;
             stop_heater = false; // prevent repeated execution
-            ESP_LOGI("director.pd", "Stop heater: PD revert to 5V result ok=%d", (int)ok);
+            ESP_LOGI("director.pd", "Stop heater: PD revert to 5V result");
             // Log memory status and skip one LVGL cycle to prevent rasterization surge
             lv_mem_monitor_t mon;
             lv_mem_monitor(&mon);
             ESP_LOGI("director.mem", "LVGL mem: free=%lu used=%lu frag=%u%%", (unsigned long)mon.free_size, (unsigned long)mon.total_size - (unsigned long)mon.free_size, (unsigned)mon.frag_pct);
-            s_skip_lvgl_once = true;
         }
         
         // Update runtime display approximately once per loop (10ms delay below) but only when minute count changes.
@@ -537,12 +523,7 @@ static void director_task(void *arg)
             lv_subject_set_int(&runTime, (int)hours);
         }
 
-        // Process LVGL after state updates; optionally skip one cycle to avoid redraw storms
-        if (s_skip_lvgl_once) {
-            s_skip_lvgl_once = false;
-        } else {
-            lv_timer_handler();
-        }
+        lv_timer_handler();
 
         // Slightly longer delay to ensure IDLE gets time (watchdog feed)
         vTaskDelay(pdMS_TO_TICKS(10));

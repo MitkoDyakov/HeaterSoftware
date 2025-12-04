@@ -26,16 +26,16 @@ static i2c_master_bus_handle_t g_bus_handle = NULL;
 static void handle_adc_read(i2c_msg_t *msg) {
     adc_result_t result;
     getTemperature(&result.chan1, &result.chan2);
+    if(msg->response_queue == NULL) return;
     xQueueSend(msg->response_queue, &result, 0);
 }
 
 static void handle_pd_set_pdo(i2c_msg_t *msg) {
     // Set PDO using DMA, send result to response queue
     bool ret = AP33772S_setFixPDO(msg->data.pd_set.set_voltage);
+    if(msg->response_queue == NULL) return;
     xQueueSend(msg->response_queue, &ret, 0);
 }
-
-
 
 static void handle_adc_read_single_ch(i2c_msg_t *msg) {
     // Read ADC channel using DMA, send result to response queue
@@ -46,22 +46,26 @@ static void handle_adc_read_single_ch(i2c_msg_t *msg) {
     }else{
         getTemperature(NULL, &result.chan2);
     }
-     xQueueSend(msg->response_queue, &result, 0);
+    if(msg->response_queue == NULL) return;
+    xQueueSend(msg->response_queue, &result, 0);
 }
 
 static void read_ambient_temp(i2c_msg_t *msg) {
     float ambient_temp;
     TMP110_getTemp(&ambient_temp);
+    if(msg->response_queue == NULL) return;
     xQueueSend(msg->response_queue, &ambient_temp, 0);
 }
 
 static void handle_pd_get_current(i2c_msg_t *msg) {
     uint16_t current_ma = AP33772S_getCurrent();
+    if(msg->response_queue == NULL) return;
     xQueueSend(msg->response_queue, &current_ma, 0);
 }
 
 static void handle_pd_get_temp(i2c_msg_t *msg) {
     uint8_t temp_c = APS33772S_getTemperature();
+    if(msg->response_queue == NULL) return;
     xQueueSend(msg->response_queue, &temp_c, 0);
 }
 
