@@ -310,6 +310,7 @@ void page_settings_cleanup(void) {
 
     const char* tstr = lv_subject_get_string(&timerType);
     wiseman_set_timer_mode(tstr && strcmp(tstr, "ON") == 0);
+    timekeeper_refresh_gui();  // Refresh main page display after timer mode change
 
     // Persist orientation (FLIP) mapping OFF->DEFAULT, ON->ROTATED, AUTO->AUTO
     const char* orient = lv_subject_get_string(&orientation);
