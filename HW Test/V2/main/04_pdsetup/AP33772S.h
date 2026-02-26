@@ -136,4 +136,7 @@ typedef struct {
   };
 } RDO_DATA_T;
 
+uint16_t AP33772S_getCurrent();
+
+
 #endif

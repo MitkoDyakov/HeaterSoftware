@@ -5,7 +5,7 @@
  #define BUZZER    21
 
 // I2C and USB-PD and ADC pin definitions
- #define I2C_SCL   46
+ #define I2C_SCL   10
  #define I2C_SDA   9
  #define PD_INT    3
  #define ADC_ALERT 5

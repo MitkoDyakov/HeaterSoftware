@@ -3,9 +3,10 @@
   "idf.espIdfPathWin": "C:\\Users\\Dimitar\\esp\\v5.4.1\\esp-idf",
   "idf.pythonInstallPath": "C:\\Users\\Dimitar\\.espressif\\tools\\idf-python\\3.11.2\\python.exe",
   "idf.openOcdConfigs": [
-    "board/esp32s3-builtin.cfg"
+    "interface/ftdi/esp32_devkitj_v1.cfg",
+    "target/esp32s3.cfg"
   ],
-  "idf.portWin": "COM11",
+  "idf.portWin": "COM13",
   "idf.toolsPathWin": "C:\\Users\\Dimitar\\.espressif",
   "idf.customExtraVars": {
     "IDF_TARGET": "esp32s3"

@@ -18,7 +18,7 @@ static void register_inputdetect(void);
 #define INITIAL_REPEAT_DELAY_MS 400
 #define REPEAT_MS               400
 #define TIMER_PERIOD_MS         20   // timer tick (scan cadence)
-#define NUM_BUTTONS             6
+#define NUM_BUTTONS             7
 
 static const char *TAG = "BUTTONS";
 
@@ -57,9 +57,10 @@ static button_t buttons[NUM_BUTTONS] = {
     { .gpio = 40, .name = "RIGHT_BOTTOM"},
     { .gpio = 41, .name = "RIGHT_TOP"},
     { .gpio = 42, .name = "RIGHT_CENTER"},
-    { .gpio = 45, .name = "LEFT_BOTTOM"},
+    { .gpio = 35, .name = "LEFT_BOTTOM"},
     { .gpio = 47, .name = "LEFT_CENTER"},
-    { .gpio = 48, .name = "LEFT_TOP"}
+    { .gpio = 48, .name = "LEFT_TOP"},
+    { .gpio = 8, .name  = "TILT"}
 };
 
 static QueueHandle_t event_queue;

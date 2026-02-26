@@ -5,6 +5,7 @@
 #include "esp_console.h"
 #include "linenoise/linenoise.h"
 
+
 #define WRITE_BUFF_LENGTH         6
 #define I2C_TOOL_TIMEOUT_VALUE_MS (50u)
 
@@ -26,6 +27,16 @@ void displaySPRVoltageMin(unsigned int current_max);
 int displayPDOInfo(int pdoIndex);
 int currentMap(int current);
 void setFixPDO(int pdoIndex);
+
+
+uint16_t AP33772S_getCurrent(){
+    uint8_t cmd = CMD_CURRENT;
+    uint8_t currentVal = 0;
+
+    ESP_ERROR_CHECK(i2c_master_transmit_receive(PD_handle, &cmd, 1, &currentVal, 1, I2C_TOOL_TIMEOUT_VALUE_MS));
+
+    return currentVal * 24;
+}
 
 // Definitions 
 void pdsetupt_setup(void)

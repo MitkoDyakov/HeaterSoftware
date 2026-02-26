@@ -15,8 +15,10 @@
 
 static const char *TAG = "APP_MAIN";
 
-//patch -p1 < ../../lvgl_translation_fix_forward.patch
-//Copilot Chat: Open in Editor Tab 
+// patch -p1 < ../../lvgl_translation_fix_forward.patch
+// Copilot Chat: Open in Editor Tab 
+// idf.py menuconfig
+// set LV_USE_TINY_TTF
 
 // Queues
 static QueueHandle_t g_button_queue;

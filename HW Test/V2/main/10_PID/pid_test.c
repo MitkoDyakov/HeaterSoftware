@@ -11,7 +11,7 @@
 #include "esp_console.h"
 #include "linenoise/linenoise.h"
 #include <unistd.h>
-
+#include "../04_pdsetup/AP33772S.h"
 
 #define BOARD_MAX_TEMPERATURE_C            60.0f  /* °C – shut off above this */
 #define VALUE_PER_BIT                     (0.00005035477) 
@@ -225,16 +225,10 @@ static int do_pidtest_cmd(int argc, char **argv)
         return 0;
     }
 
-    userSetPointCelsius = pidtest_args.temperature->ival[0];
-
-    PIDController_Init(&heaterController,
-                       PROPORTIONAL_GAIN,
-                       INTEGRAL_GAIN,
-                       DERIVATIVE_GAIN,
-                       0.0f,
-                       100.0f);
-
-    uint32_t previousMillis = (xTaskGetTickCount() * portTICK_PERIOD_MS);
+ 
+    /* ---- Actuator update ---- */
+    ledc_set_duty(heater_channel_1.speed_mode, heater_channel_1.channel, MAX_DUTY*50/100);
+    ledc_update_duty(heater_channel_1.speed_mode, heater_channel_1.channel);
 
     while (1) 
     {
@@ -269,39 +263,9 @@ static int do_pidtest_cmd(int argc, char **argv)
                 break;
             }
         }
-    
-        uint32_t currentMillis = (xTaskGetTickCount() * portTICK_PERIOD_MS);
 
-        /* Run controller at fixed interval */
-        if ((currentMillis - previousMillis) > SAMPLING_PERIOD_MILLISECONDS) 
-        {
-            float deltaTimeSeconds = (currentMillis - previousMillis) / 1000.0f;
-            previousMillis = currentMillis;
-
-            /* ---- Sensor read ---- */
-            float boardTemperatureCelsius = read_board_temperature_celsius();
-            printf("Target: %u Temp:|%.2f| - ", userSetPointCelsius, boardTemperatureCelsius);
-
-            /* ---- Safety check ---- */
-            if (boardTemperatureCelsius >= BOARD_MAX_TEMPERATURE_C) 
-            {
-                ledc_set_duty(heater_channel_2.speed_mode, heater_channel_2.channel, 0);
-                ledc_update_duty(heater_channel_2.speed_mode, heater_channel_2.channel);
-                return 0;
-            }
-
-            /* ---- PID computation ---- */
-            float dutyPercent = PIDController_Compute(&heaterController,
-                                                    userSetPointCelsius,
-                                                    boardTemperatureCelsius,
-                                                    deltaTimeSeconds);
-            
-            printf("PWM: %.2f\r\n ", dutyPercent);
-
-            /* ---- Actuator update ---- */
-            ledc_set_duty(heater_channel_2.speed_mode, heater_channel_2.channel, MAX_DUTY*dutyPercent/100);
-            ledc_update_duty(heater_channel_2.speed_mode, heater_channel_2.channel);
-        }
+        uint16_t current = AP33772S_getCurrent();
+        printf("PD Current: %u mA \r\n", current);
     }
     
     return 0;

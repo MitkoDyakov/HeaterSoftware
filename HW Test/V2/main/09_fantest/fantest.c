@@ -5,7 +5,7 @@
 #include "argtable3/argtable3.h"
 #include "driver/gpio.h"
 
-#define ENABLE_12V_PIN            (14u)
+#define ENABLE_12V_PIN            (13u)
 #define FAN_ENABLE_CHANNEL_1_PIN  (4u)
 #define FAN_ENABLE_CHANNEL_2_PIN  (16u)
 #define CONFIG_HEATER_TEST_PERIOD (1000u)

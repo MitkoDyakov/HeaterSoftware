@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heater Control</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Temperature Display Section -->
+        <div class="temp-display-section">
+            <div class="temp-card">
+                <div class="temp-label">CH1</div>
+                <div class="temp-value">24.7<span class="degree">°</span>C</div>
+            </div>
+            <div class="temp-card">
+                <div class="temp-label">CH2</div>
+                <div class="temp-value">25.4<span class="degree">°</span>C</div>
+            </div>
+        </div>
+
+        <!-- Target Temperature Section -->
+        <div class="target-section">
+            <div class="target-label">TARGET TEMP</div>
+            <div class="target-control">
+                <button class="temp-btn decrease" id="decreaseBtn">−</button>
+                <div class="target-display">
+                    <span id="targetTemp">30</span><span class="degree">°</span>
+                </div>
+                <button class="temp-btn increase" id="increaseBtn">+</button>
+            </div>
+            <!-- Timer Section (Inside Target Section) -->
+            <button class="timer-section" id="startBtn">
+                <div class="timer-display" id="timerDisplay">00:00</div>
+                <div class="start-text">START</div>
+            </button>
+        </div>
+
+        <!-- Power Supply Section -->
+        <div class="power-section">
+            <div class="power-label">USB-PD</div>
+            <button class="power-btn active" id="power5v">5V</button>
+            <button class="power-btn" id="power9v">9V</button>
+            <button class="power-btn" id="power15v">15V</button>
+            <button class="power-btn" id="power20v">20V</button>
+        </div>
+
+        <!-- Status Section -->
+        <div class="status-section">
+            <button class="status-row" id="timerModeBtn">
+                <span class="status-label">TIMER MODE:</span>
+                <span class="status-value" id="timerMode">OFF</span>
+            </button>
+            <button class="status-row" id="preHeatBtn">
+                <span class="status-label">PRE-HEAT:</span>
+                <span class="status-value" id="preHeat">15m</span>
+            </button>
+        </div>
+
+        <!-- WiFi Section -->
+        <div class="wifi-section">
+            <button class="wifi-btn" id="wifiBtn">CONNECT TO WIFI</button>
+        </div>
+    </div>
+
+    <!-- Pre-Heat Picker Modal -->
+    <div id="preHeatModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">PRE-HEAT MINUTES</div>
+            <div class="slider-container">
+                <input type="range" id="preHeatSlider" min="0" max="30" step="5" value="15" class="slider">
+                <div class="slider-value" id="sliderValue">15m</div>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="preHeatCancel">CANCEL</button>
+                <button class="modal-btn confirm" id="preHeatConfirm">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Timer Mode Picker Modal -->
+    <div id="timerModeModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">TIMER</div>
+            <div class="timer-picker-container">
+                <div class="time-input">
+                    <div class="time-label">HOURS</div>
+                    <input type="range" id="hoursSlider" min="0" max="99" value="0" class="slider">
+                    <div class="time-value" id="hoursValue">00</div>
+                </div>
+                <div class="time-separator">:</div>
+                <div class="time-input">
+                    <div class="time-label">MINUTES</div>
+                    <input type="range" id="minutesSlider" min="0" max="60" value="0" class="slider">
+                    <div class="time-value" id="minutesValue">00</div>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="timerModeCancel">CANCEL</button>
+                <button class="modal-btn confirm" id="timerModeConfirm">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

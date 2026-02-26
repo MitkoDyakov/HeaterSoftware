@@ -6,6 +6,7 @@
 #include "argtable3/argtable3.h"
 #include "driver/gpio.h"
 #include "math.h"
+#include "../04_pdsetup/AP33772S.h"
 
 #define ADS7142_RDY_PIN           (6u)
 #define ADS7142_ALERT_PIN         (5u)
@@ -297,9 +298,10 @@ static int do_heatertest_cmd(int argc, char **argv)
 
       double tempC = calculate_temperature_celsius(Rntc);
       printf("ch2: %u - %f V - Rntc %f R - %.2f °C\r\n", ch1, voltage, Rntc, tempC);
-
-
     }
+
+    uint16_t current = AP33772S_getCurrent();
+    printf("PD Current: %u mA ", current);
 
     fflush(stdout);
     vTaskDelay(CONFIG_HEATER_TEST_PERIOD / portTICK_PERIOD_MS);

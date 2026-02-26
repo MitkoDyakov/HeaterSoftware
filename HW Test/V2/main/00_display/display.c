@@ -6,9 +6,9 @@
 #include "jpeg_decoder.h"   // comes with esp_jpeg component
 
 #define LCD_HOST     SPI2_HOST
-#define PIN_NUM_MOSI 37 
-#define PIN_NUM_CLK  36 
-#define PIN_NUM_CS   35
+#define PIN_NUM_MOSI 11 
+#define PIN_NUM_CLK  12
+#define PIN_NUM_CS   36
 #define PIN_NUM_DC   38
 #define PIN_NUM_RST  39 
 

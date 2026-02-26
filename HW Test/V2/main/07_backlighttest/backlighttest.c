@@ -6,7 +6,7 @@
 #include "argtable3/argtable3.h"
 #include <math.h>
 
-#define BACKLIGHT_CONTROL_PIN   (10)
+#define BACKLIGHT_CONTROL_PIN   (14)
 #define BACKLIGHT_DUTY_MAX   ((1 << 13) - 1)
 
 static int do_backlighttest_cmd(int argc, char **argv);
